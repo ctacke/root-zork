@@ -1,0 +1,32 @@
+{
+  "name": "@zork/app",
+  "author": "Chris Tacke",
+  "description": "Zork Trilogy - Classic Infocom Text Adventure",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@zork/gen-client": "file:./networking/gen/client",
+    "@zork/gen-server": "file:./networking/gen/server",
+    "@zork/gen-shared": "file:./networking/gen/shared",
+    "@rootsdk/client-app": "^0.19.1",
+    "@rootsdk/server-app": "^0.19.1"
+  },
+  "devDependencies": {
+    "@rootsdk/dev-tools": "^0.19.1",
+    "typescript": "^5.9.2"
+  },
+  "scripts": {
+    "build": "npm run build --workspace=@zork/networking && npm run build --workspace=@zork/server && npm run build --workspace=@zork/client",
+    "clean": "node clean.js"
+  },
+  "workspaces": {
+    "packages": [
+      "./networking",
+      "./server",
+      "./client"
+    ]
+  }
+}

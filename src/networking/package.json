@@ -1,0 +1,6 @@
+{
+  "name": "@zork/networking",
+  "scripts": {
+    "build": "rootsdk-protoc && tsc -p ./gen/shared/tsconfig-esm.json && tsc -p ./gen/shared && tsc -p ./gen/server && tsc -p ./gen/client"
+  }
+}

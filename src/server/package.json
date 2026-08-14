@@ -1,0 +1,19 @@
+{
+  "name": "@zork/server",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@rootsdk/server-app": "^0.19.1",
+    "@zork/gen-server": "file:../networking/gen/server",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.6",
+    "@types/sqlite3": "^3.1.11"
+  },
+  "scripts": {
+    "build": "tsc",
+    "server": "rootsdk start devhost --project-folder=../",
+    "dev": "rootsdk start devhost --project-folder=../"
+  }
+}

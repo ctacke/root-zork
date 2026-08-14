@@ -1,0 +1,151 @@
+syntax = "proto3";
+
+package zork;
+
+message GameInfo {
+  string id = 1;
+  string title = 2;
+  string subtitle = 3;
+  string release_info = 4;
+  string description = 5;
+  bool has_active_game = 6;
+  string last_location = 7;
+  int32 last_score = 8;
+  int32 last_moves = 9;
+  string last_updated_at = 10;
+}
+
+message SaveSlotInfo {
+  string id = 1;
+  string game_id = 2;
+  string slot_name = 3;
+  string description = 4;
+  string location = 5;
+  int32 score = 6;
+  int32 moves = 7;
+  string created_at = 8;
+}
+
+message ActiveSessionProto {
+  string game_id = 1;
+  string game_title = 2;
+  string location = 3;
+  int32 score = 4;
+  int32 moves = 5;
+  repeated string transcript = 6;
+  bool is_game_over = 7;
+  string status_type = 8;
+}
+
+// Requests & Responses
+
+message GetGameListRequest {}
+
+message GetGameListResponse {
+  repeated GameInfo games = 1;
+  optional string current_active_game_id = 2;
+  string user_nickname = 3;
+}
+
+message StartGameRequest {
+  string game_id = 1;
+  bool restart = 2;
+}
+
+message StartGameResponse {
+  bool success = 1;
+  string output_text = 2;
+  string game_id = 3;
+  string game_title = 4;
+  string location = 5;
+  int32 score = 6;
+  int32 moves = 7;
+  bool is_game_over = 8;
+}
+
+message SendCommandRequest {
+  string game_id = 1;
+  string command = 2;
+}
+
+message SendCommandResponse {
+  bool success = 1;
+  string output_text = 2;
+  string game_id = 3;
+  string location = 4;
+  int32 score = 5;
+  int32 moves = 6;
+  bool is_game_over = 7;
+}
+
+message SaveSlotRequest {
+  string game_id = 1;
+  string slot_name = 2;
+  string description = 3;
+}
+
+message SaveSlotResponse {
+  bool success = 1;
+  string message = 2;
+  SaveSlotInfo slot = 3;
+}
+
+message RestoreSlotRequest {
+  string game_id = 1;
+  string slot_id = 2;
+}
+
+message RestoreSlotResponse {
+  bool success = 1;
+  string output_text = 2;
+  string game_id = 3;
+  string location = 4;
+  int32 score = 5;
+  int32 moves = 6;
+}
+
+message ListSaveSlotsRequest {
+  string game_id = 1;
+}
+
+message ListSaveSlotsResponse {
+  repeated SaveSlotInfo slots = 1;
+}
+
+message DeleteSaveSlotRequest {
+  string slot_id = 1;
+  string game_id = 2;
+}
+
+message DeleteSaveSlotResponse {
+  bool success = 1;
+}
+
+message GetActiveSessionRequest {
+  string game_id = 1;
+}
+
+message GetActiveSessionResponse {
+  bool has_active_session = 1;
+  optional ActiveSessionProto session = 2;
+}
+
+message AbandonGameRequest {
+  string game_id = 1;
+}
+
+message AbandonGameResponse {
+  bool success = 1;
+}
+
+service ZorkService {
+  rpc GetGameList (GetGameListRequest) returns (GetGameListResponse);
+  rpc StartGame (StartGameRequest) returns (StartGameResponse);
+  rpc SendCommand (SendCommandRequest) returns (SendCommandResponse);
+  rpc SaveSlot (SaveSlotRequest) returns (SaveSlotResponse);
+  rpc RestoreSlot (RestoreSlotRequest) returns (RestoreSlotResponse);
+  rpc ListSaveSlots (ListSaveSlotsRequest) returns (ListSaveSlotsResponse);
+  rpc DeleteSaveSlot (DeleteSaveSlotRequest) returns (DeleteSaveSlotResponse);
+  rpc GetActiveSession (GetActiveSessionRequest) returns (GetActiveSessionResponse);
+  rpc AbandonGame (AbandonGameRequest) returns (AbandonGameResponse);
+}

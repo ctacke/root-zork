@@ -1,0 +1,24 @@
+{
+  "name": "@zork/client",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@rootsdk/client-app": "^0.19.1",
+    "@zork/gen-client": "file:../networking/gen/client",
+    "@zork/gen-shared": "file:../networking/gen/shared",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "vite": "^6.4.1",
+    "vite-plugin-checker": "^0.8.0"
+  },
+  "scripts": {
+    "build": "tsc && vite build",
+    "client": "vite"
+  }
+}

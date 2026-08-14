@@ -1,0 +1,612 @@
+/* =========================================================
+   ZORK TRILOGY - RETRO CRT GREEN-SCREEN TERMINAL THEME
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=Fira+Code:wght@400;600&display=swap');
+
+:root {
+  --crt-bg: #030803;
+  --crt-screen-bg: #060e06;
+  --crt-screen-radial: radial-gradient(circle at center, #0a140a 0%, #030803 95%);
+  --phosphor-green: #33ff33;
+  --phosphor-bright: #6eff6e;
+  --phosphor-dim: #1a6e1a;
+  --phosphor-faint: #0c330c;
+  --phosphor-amber: #ffb000;
+  --phosphor-red: #ff4444;
+  --phosphor-glow: 0 0 4px rgba(51, 255, 51, 0.65), 0 0 10px rgba(51, 255, 51, 0.25);
+  --phosphor-glow-bright: 0 0 6px rgba(110, 255, 110, 0.85), 0 0 14px rgba(51, 255, 51, 0.5);
+  --border-green: #226f22;
+  --border-green-bright: #33ff33;
+  --terminal-font: 'VT323', 'Share Tech Mono', 'Courier New', monospace;
+  --mono-code-font: 'Share Tech Mono', monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--crt-bg);
+  color: var(--phosphor-green);
+  font-family: var(--terminal-font);
+  font-size: 20px;
+  line-height: 1.25;
+  letter-spacing: 0.5px;
+  user-select: text;
+}
+
+/* Base Terminal Container - Fits 100% within the window with even border margin */
+.zork-app-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  background: var(--crt-bg);
+  overflow: hidden;
+}
+
+/* CRT Monitor Frame */
+.crt-monitor {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--crt-screen-radial);
+  border: 2px solid var(--border-green);
+  border-radius: 8px;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.85),
+              0 0 12px rgba(25, 75, 25, 0.35);
+  overflow: hidden;
+}
+
+/* CRT Scanline Overlay */
+.crt-scanlines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.28) 50%
+  );
+  background-size: 100% 3px;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.8;
+  border-radius: 6px;
+}
+
+/* Subtle CRT Screen Vignette */
+.crt-vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, transparent 75%, rgba(0, 0, 0, 0.65) 100%);
+  pointer-events: none;
+  z-index: 99;
+  border-radius: 6px;
+}
+
+/* Classic Infocom Top Status Line (Reverse Video Green) */
+.terminal-status-bar {
+  flex-shrink: 0;
+  height: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--phosphor-green);
+  color: #030803;
+  padding: 0 12px;
+  font-family: var(--mono-code-font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-bottom: 2px solid #030803;
+  z-index: 10;
+  user-select: none;
+}
+
+.status-left {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.status-item {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.status-label {
+  opacity: 0.85;
+}
+
+.status-value {
+  font-weight: 900;
+}
+
+.status-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.status-badge {
+  background: #030803;
+  color: var(--phosphor-green);
+  padding: 1px 7px;
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-action-btn {
+  background: #030803;
+  color: var(--phosphor-green);
+  border: 1px solid #030803;
+  font-family: var(--mono-code-font);
+  font-size: 11px;
+  font-weight: bold;
+  padding: 1px 6px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+}
+
+.status-action-btn:hover {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+/* Terminal Content Main View */
+.terminal-main-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px 14px 8px 14px;
+}
+
+/* Scrolling Monospace Text Area */
+.terminal-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  scroll-behavior: smooth;
+}
+
+/* Custom Green Scrollbar */
+.terminal-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terminal-scroll-area::-webkit-scrollbar-track {
+  background: rgba(3, 10, 3, 0.8);
+}
+
+.terminal-scroll-area::-webkit-scrollbar-thumb {
+  background: var(--border-green);
+}
+
+.terminal-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: var(--phosphor-green);
+}
+
+/* Output Text Lines */
+.output-chunk {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--phosphor-green);
+  text-shadow: var(--phosphor-glow);
+  font-family: var(--terminal-font);
+  font-size: 21px;
+  line-height: 1.25;
+}
+
+.output-chunk.command-echo {
+  color: var(--phosphor-bright);
+  font-weight: bold;
+  opacity: 0.95;
+}
+
+.output-chunk.system-msg {
+  color: var(--phosphor-amber);
+  border-left: 2px solid var(--phosphor-amber);
+  padding-left: 6px;
+  font-size: 19px;
+}
+
+/* Interactive Input Prompt Bar */
+.terminal-input-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-top: 6px;
+  padding-bottom: 2px;
+  border-top: 1px solid var(--phosphor-faint);
+  margin-top: 4px;
+  font-family: var(--terminal-font);
+  font-size: 23px;
+}
+
+.input-prompt-symbol {
+  color: var(--phosphor-green);
+  text-shadow: var(--phosphor-glow-bright);
+  margin-right: 8px;
+  font-weight: bold;
+  user-select: none;
+}
+
+.terminal-input-field {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--phosphor-bright);
+  font-family: var(--terminal-font);
+  font-size: 23px;
+  letter-spacing: 0.5px;
+  text-shadow: var(--phosphor-glow-bright);
+  caret-color: var(--phosphor-green);
+}
+
+.terminal-input-field::placeholder {
+  color: var(--phosphor-dim);
+  font-style: italic;
+  font-size: 17px;
+}
+
+/* Blinking Cursor Block */
+.cursor-block {
+  display: inline-block;
+  width: 9px;
+  height: 19px;
+  background-color: var(--phosphor-green);
+  box-shadow: var(--phosphor-glow);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* =========================================================
+   GAME SELECT STARTUP MENU VIEW
+   ========================================================= */
+.menu-view-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  gap: 14px;
+}
+
+.ascii-banner {
+  color: var(--phosphor-bright);
+  text-shadow: var(--phosphor-glow-bright);
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: pre;
+  user-select: none;
+}
+
+.menu-subtitle {
+  color: var(--phosphor-green);
+  font-size: 18px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-align: center;
+  border-top: 1px solid var(--border-green);
+  border-bottom: 1px solid var(--border-green);
+  padding: 3px 18px;
+}
+
+.game-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 780px;
+}
+
+.game-card {
+  background: rgba(8, 20, 8, 0.6);
+  border: 1px solid var(--border-green);
+  padding: 12px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.game-card:hover, .game-card.selected {
+  background: rgba(16, 45, 16, 0.7);
+  border-color: var(--phosphor-bright);
+  box-shadow: 0 0 12px rgba(51, 255, 51, 0.25);
+}
+
+.game-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.game-card-title {
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--phosphor-bright);
+  text-shadow: var(--phosphor-glow);
+}
+
+.game-card-key {
+  background: var(--phosphor-green);
+  color: #000;
+  padding: 1px 7px;
+  font-family: var(--mono-code-font);
+  font-weight: bold;
+  font-size: 13px;
+  border-radius: 2px;
+}
+
+.game-card-desc {
+  font-size: 17px;
+  color: var(--phosphor-green);
+  opacity: 0.9;
+  line-height: 1.25;
+}
+
+.game-card-status {
+  font-family: var(--mono-code-font);
+  font-size: 13px;
+  color: var(--phosphor-amber);
+  display: flex;
+  gap: 12px;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--phosphor-faint);
+}
+
+.game-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.retro-btn {
+  background: transparent;
+  color: var(--phosphor-green);
+  border: 1px solid var(--border-green);
+  padding: 3px 10px;
+  font-family: var(--mono-code-font);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+  text-shadow: var(--phosphor-glow);
+}
+
+.retro-btn:hover {
+  background: var(--phosphor-green);
+  color: #030803;
+  border-color: var(--phosphor-green);
+  box-shadow: 0 0 8px rgba(51, 255, 51, 0.5);
+  text-shadow: none;
+}
+
+.retro-btn.danger:hover {
+  background: var(--phosphor-red);
+  color: #ffffff;
+  border-color: var(--phosphor-red);
+}
+
+/* =========================================================
+   SAVE / LOAD SLOTS MODAL & OVERLAY
+   ========================================================= */
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(3, 8, 3, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.modal-box {
+  background: #061006;
+  border: 2px solid var(--phosphor-green);
+  box-shadow: 0 0 20px rgba(51, 255, 51, 0.35);
+  width: 100%;
+  max-width: 640px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.modal-header {
+  background: var(--phosphor-green);
+  color: #030803;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono-code-font);
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #030803;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.save-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.retro-text-input {
+  flex: 1;
+  background: #030803;
+  border: 1px solid var(--border-green);
+  color: var(--phosphor-bright);
+  padding: 5px 8px;
+  font-family: var(--mono-code-font);
+  font-size: 14px;
+}
+
+.retro-text-input:focus {
+  outline: none;
+  border-color: var(--phosphor-bright);
+  box-shadow: 0 0 6px rgba(51, 255, 51, 0.4);
+}
+
+.slots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slot-item {
+  background: rgba(8, 22, 8, 0.7);
+  border: 1px solid var(--border-green);
+  padding: 8px 12px;
+  border-radius: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slot-item:hover {
+  border-color: var(--phosphor-green);
+  background: rgba(14, 35, 14, 0.85);
+}
+
+.slot-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.slot-title {
+  font-size: 17px;
+  font-weight: bold;
+  color: var(--phosphor-bright);
+}
+
+.slot-meta {
+  font-family: var(--mono-code-font);
+  font-size: 12px;
+  color: var(--phosphor-dim);
+}
+
+.slot-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* =========================================================
+   HELP & COMMAND REFERENCE MODAL
+   ========================================================= */
+.help-content {
+  font-size: 17px;
+  line-height: 1.35;
+  color: var(--phosphor-green);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.help-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono-code-font);
+  font-size: 13px;
+}
+
+.help-table th, .help-table td {
+  padding: 5px 8px;
+  text-align: left;
+  border: 1px solid var(--border-green);
+}
+
+.help-table th {
+  background: rgba(16, 42, 16, 0.6);
+  color: var(--phosphor-bright);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .zork-app-wrapper {
+    padding: 4px;
+  }
+  .status-left {
+    gap: 10px;
+  }
+  .output-chunk {
+    font-size: 18px;
+  }
+  .terminal-input-bar {
+    font-size: 19px;
+  }
+  .terminal-input-field {
+    font-size: 19px;
+  }
+  .ascii-banner {
+    font-size: 7px;
+  }
+}
