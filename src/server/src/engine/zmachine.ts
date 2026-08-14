@@ -27,8 +27,8 @@ export interface ZExecutionResult {
 
 export class ZMachineEngine {
   public memInit: Uint8Array;
-  public mem!: Uint8Array;
-  public view!: DataView;
+  public mem: Uint8Array;
+  public view: DataView;
   public byteSwapped: boolean = false;
   public statusType: boolean = false; // false = score/moves, true = hours/minutes
   public serial: string = '';
@@ -45,7 +45,7 @@ export class ZMachineEngine {
   // Active execution state
   private gen: Generator<any, void, any> | null = null;
   private currentOutputBuffer: string = '';
-  private currentStatus: StatusLineData = {
+  public currentStatus: StatusLineData = {
     location: '',
     scoreOrHours: 0,
     movesOrMinutes: 0,
@@ -61,6 +61,9 @@ export class ZMachineEngine {
 
   constructor(storyBuffer: Uint8Array | Buffer) {
     this.memInit = new Uint8Array(storyBuffer);
+    this.mem = new Uint8Array(this.memInit);
+    this.view = new DataView(this.mem.buffer, this.mem.byteOffset, this.mem.byteLength);
+
     if (this.memInit[0] !== 3) {
       throw new Error(`Unsupported Z-code version: ${this.memInit[0]}. Expected version 3.`);
     }
@@ -163,115 +166,139 @@ export class ZMachineEngine {
     }
   }
 
-  public handleInput(str: string, t1: number, t2: number): void {
-    str = str.toLowerCase().slice(0, Math.max(0, this.mem[t1] - 1));
-    for (let i = 0; i < str.length; i++) {
-      this.mem[t1 + i + 1] = str.charCodeAt(i);
-    }
-    this.mem[t1 + str.length + 1] = 0;
+  public handleInput(userInput: string, maxlen: number, parseOffset: number): void {
+    const textBuffer = this.mem;
+    const inputChars = (userInput || '').toLowerCase();
+    let charIdx = 0;
 
-    const w = (x: string) => {
-      let i = 0;
-      return x
-        .split('')
-        .filter(y => (i += /[a-z]/.test(y) ? 1 : /[0-9.,!?_#'"/\\:\-()]/.test(y) ? 2 : 4) < 7)
-        .join('');
-    };
+    for (; charIdx < inputChars.length && charIdx < maxlen - 1; charIdx++) {
+      textBuffer[maxlen + 1 + charIdx] = inputChars.charCodeAt(charIdx);
+    }
+    textBuffer[maxlen + 1 + charIdx] = 0; // null-terminated
 
-    if (!this.regBreak) {
-      this.regBreak = new RegExp('[^ \\n\\t]+', 'g');
+    if (parseOffset === 0) return;
+
+    let p = parseOffset;
+    const maxWords = this.mem[p++];
+    let wordCount = 0;
+    p++; // skip count byte for now
+
+    if (this.regBreak) {
+      this.regBreak.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = this.regBreak.exec(inputChars)) !== null && wordCount < maxWords) {
+        let token = match[0];
+        let tokenAddr = 0;
+
+        for (let len = token.length; len > 0; len--) {
+          const sub = token.substring(0, len);
+          if (this.vocabulary?.has(sub)) {
+            tokenAddr = this.vocabulary.get(sub) || 0;
+            break;
+          }
+        }
+
+        this.putu(p, tokenAddr);
+        this.mem[p + 2] = token.length;
+        this.mem[p + 3] = match.index + 1;
+        p += 4;
+        wordCount++;
+      }
     }
 
-    const matches: Array<[number, number, number]> = [];
-    let match: RegExpExecArray | null;
-    this.regBreak.lastIndex = 0;
-    while ((match = this.regBreak.exec(str)) !== null) {
-      const word = match[0];
-      const offset = match.index;
-      const vocabAddr = (this.vocabulary && this.vocabulary.get(w(word))) || 0;
-      matches.push([word.length, vocabAddr, offset + 1]);
-    }
-
-    this.mem[t2 + 1] = matches.length;
-    for (let i = 0; i < matches.length; i++) {
-      this.putu(t2 + i * 4 + 2, matches[i][1]);
-      this.mem[t2 + i * 4 + 4] = matches[i][0];
-      this.mem[t2 + i * 4 + 5] = matches[i][2];
-    }
+    this.mem[parseOffset + 1] = wordCount;
   }
 
   public serialize(ds: number[], cs: CallFrame[], pc: number): Uint8Array {
-    const purbot = this.getu(14);
-    const csSize = cs.reduce((p, c) => p + 2 * (c.ds.length + c.local.length) + 6, 0);
-    const totalSize = purbot + csSize + 2 * ds.length + 8;
-    const ar = new Uint8Array(totalSize);
-    ar.set(new Uint8Array(this.mem.buffer, 0, purbot));
-    const vi = new DataView(ar.buffer);
-    vi.setUint32(purbot, pc);
-    vi.setUint16(purbot + 4, cs.length);
-    vi.setUint16(purbot + 6, ds.length);
-    for (let i = 0; i < ds.length; i++) {
-      vi.setInt16(purbot + i * 2 + 8, ds[i]);
-    }
-    let e = purbot + ds.length * 2 + 8;
+    const purbot = (this.memInit[14] << (this.byteSwapped ? 0 : 8)) | (this.memInit[15] << (this.byteSwapped ? 8 : 0));
+    let csSize = 2; // cs.length (uint16)
     for (let i = 0; i < cs.length; i++) {
-      vi.setUint32(e, cs[i].pc);
-      vi.setUint8(e, cs[i].local.length);
-      vi.setUint16(e + 4, cs[i].ds.length);
-      for (let j = 0; j < cs[i].ds.length; j++) {
-        vi.setInt16(e + j * 2 + 6, cs[i].ds[j]);
-      }
-      for (let j = 0; j < cs[i].local.length; j++) {
-        vi.setInt16(e + cs[i].ds.length * 2 + j * 2 + 6, cs[i].local[j]);
-      }
-      e += (cs[i].ds.length + cs[i].local.length) * 2 + 6;
+      csSize += 4; // pc (uint32)
+      csSize += 1; // local.length (uint8)
+      csSize += cs[i].local.length * 2; // local array
+      csSize += 2; // ds.length (uint16)
+      csSize += cs[i].ds.length * 2; // ds array
     }
+    const totalSize = purbot + 4 + 4 + 2 + ds.length * 2 + csSize;
+    const ar = new Uint8Array(totalSize);
+    ar.set(this.mem.subarray(0, purbot));
+
+    const vi = new DataView(ar.buffer, ar.byteOffset, ar.byteLength);
+    let offset = purbot;
+
+    vi.setUint32(offset, pc); offset += 4;
+    vi.setUint32(offset, this.seed >>> 0); offset += 4;
+
+    vi.setUint16(offset, ds.length); offset += 2;
+    for (let i = 0; i < ds.length; i++) {
+      vi.setInt16(offset, ds[i]);
+      offset += 2;
+    }
+
+    vi.setUint16(offset, cs.length); offset += 2;
+    for (let i = 0; i < cs.length; i++) {
+      vi.setUint32(offset, cs[i].pc); offset += 4;
+      vi.setUint8(offset, cs[i].local.length); offset += 1;
+      for (let j = 0; j < cs[i].local.length; j++) {
+        vi.setInt16(offset, cs[i].local[j]);
+        offset += 2;
+      }
+      vi.setUint16(offset, cs[i].ds.length); offset += 2;
+      for (let j = 0; j < cs[i].ds.length; j++) {
+        vi.setInt16(offset, cs[i].ds[j]);
+        offset += 2;
+      }
+    }
+
     return ar;
   }
 
-  public deserialize(ar: Uint8Array): [number[], CallFrame[], number] | null {
+  public deserialize(ar: Uint8Array): { ds: number[]; cs: CallFrame[]; pc: number } | null {
     try {
-      const purbot = this.getu(14);
-      const vi = new DataView(ar.buffer);
-      if (ar[2] !== this.mem[2] || ar[3] !== this.mem[3]) return null;
+      const purbot = (this.memInit[14] << (this.byteSwapped ? 0 : 8)) | (this.memInit[15] << (this.byteSwapped ? 8 : 0));
+      if (ar.length < purbot + 12) return null;
+      if (ar[2] !== this.memInit[2] || ar[3] !== this.memInit[3]) return null;
 
-      let e = purbot;
-      const g8 = () => ar[e++];
-      const g16s = () => {
-        e += 2;
-        return vi.getInt16(e - 2);
-      };
-      const g16 = () => {
-        e += 2;
-        return vi.getUint16(e - 2);
-      };
-      const g24 = () => {
-        e += 3;
-        return vi.getUint32(e - 4) & 0xffffff;
-      };
-      const g32 = () => {
-        e += 4;
-        return vi.getUint32(e - 4);
-      };
+      // Restore dynamic memory from saved buffer
+      this.mem = new Uint8Array(this.memInit);
+      this.mem.set(ar.subarray(0, purbot));
+      this.view = new DataView(this.mem.buffer, this.mem.byteOffset, this.mem.byteLength);
 
-      const pc = g32();
-      const numCs = g16();
-      const numDs = g16();
-      const ds = Array.from({ length: numDs }, g16s);
-      const cs: CallFrame[] = new Array(numCs);
-      for (let i = 0; i < numCs; i++) {
-        const localLen = g8();
-        const framePc = g24();
-        const frameDsLen = g16();
-        const frameDs = Array.from({ length: frameDsLen }, g16s);
-        const local = new Int16Array(localLen);
-        for (let j = 0; j < localLen; j++) local[j] = g16s();
-        cs[i] = { local, pc: framePc, ds: frameDs };
+      const vi = new DataView(ar.buffer, ar.byteOffset, ar.byteLength);
+      let offset = purbot;
+
+      const pc = vi.getUint32(offset); offset += 4;
+      this.seed = vi.getUint32(offset); offset += 4;
+
+      const dsLen = vi.getUint16(offset); offset += 2;
+      const ds: number[] = [];
+      for (let i = 0; i < dsLen; i++) {
+        ds.push(vi.getInt16(offset));
+        offset += 2;
       }
 
-      this.mem.set(new Uint8Array(ar.buffer, 0, purbot));
-      return [ds, cs, pc];
-    } catch {
+      const csLen = vi.getUint16(offset); offset += 2;
+      const cs: CallFrame[] = [];
+      for (let i = 0; i < csLen; i++) {
+        const framePc = vi.getUint32(offset); offset += 4;
+        const localLen = vi.getUint8(offset); offset += 1;
+        const local = new Int16Array(localLen);
+        for (let j = 0; j < localLen; j++) {
+          local[j] = vi.getInt16(offset);
+          offset += 2;
+        }
+        const frameDsLen = vi.getUint16(offset); offset += 2;
+        const frameDs: number[] = [];
+        for (let j = 0; j < frameDsLen; j++) {
+          frameDs.push(vi.getInt16(offset));
+          offset += 2;
+        }
+        cs.push({ pc: framePc, local, ds: frameDs });
+      }
+
+      return { ds, cs, pc };
+    } catch (err) {
+      console.error('[ZMachine] Deserialize error:', err);
       return null;
     }
   }
@@ -299,7 +326,6 @@ export class ZMachineEngine {
   }
 
   public *read(maxlen: number): Generator<any, string, any> {
-    // Snapshot active registers
     yield { type: 'read', maxlen };
     return this.nextInputString;
   }
@@ -311,11 +337,13 @@ export class ZMachineEngine {
   public loadSnapshot(snapshotData: Uint8Array): boolean {
     const restored = this.deserialize(snapshotData);
     if (!restored) return false;
-    this.activeDs = restored[0];
-    this.activeCs = restored[1];
-    this.activePc = restored[2];
+    this.activeDs = restored.ds;
+    this.activeCs = restored.cs;
+    this.activePc = restored.pc;
     this.gen = this.run(true);
-    return true;
+    // Advance generator to the read yield point
+    const step = this.gen.next();
+    return !step.done;
   }
 
   /**
@@ -358,7 +386,7 @@ export class ZMachineEngine {
 
     const init = () => {
       mem = this.mem = new Uint8Array(this.memInit);
-      this.view = new DataView(mem.buffer);
+      this.view = new DataView(mem.buffer, mem.byteOffset, mem.byteLength);
       mem[1] &= 3;
       if (this.isTandy) mem[1] |= 8;
       this.put(16, this.savedFlags);
@@ -465,7 +493,7 @@ export class ZMachineEngine {
 
     if (resumeFromActiveState) {
       mem = this.mem;
-      this.view = new DataView(mem.buffer);
+      this.view = new DataView(mem.buffer, mem.byteOffset, mem.byteLength);
       defprop = this.getu(10) - 2;
       globals = this.getu(12) - 32;
       this.fwords = fwords = this.getu(24);
@@ -481,6 +509,7 @@ export class ZMachineEngine {
 
     // Main execution loop
     main: for (;;) {
+      const instPc = pc;
       inst = pcgetb();
       if (inst < 128) {
         // 2OP
@@ -528,7 +557,7 @@ export class ZMachineEngine {
         case 6: // IN?
           predicate(mem[objects + op0 * 9 + 4] === op1);
           break;
-        case 7: // BTST
+        case 7: // BTST?
           predicate((op0 & op1) === op1);
           break;
         case 8: // BOR
@@ -570,56 +599,61 @@ export class ZMachineEngine {
           store(op3);
           break;
         case 19: // NEXTP
-          if (op1) {
+          x = this.getu(objects + op0 * 9 + 7);
+          x += mem[x] * 2 + 1;
+          if (op1 === 0) store(mem[x] & 31);
+          else {
             propfind();
-            store(mem[op3 + (mem[op3 - 1] >> 5) + 1] & 31);
-          } else {
-            x = this.getu(objects + op0 * 9 + 7);
-            store(mem[x + mem[x] * 2 + 1] & 31);
+            if (op3) {
+              x = op3 + (mem[op3 - 1] >> 5) + 1;
+              store(mem[x] & 31);
+            } else {
+              store(0);
+            }
           }
           break;
         case 20: // ADD
-          store((op0 + op1) | 0);
+          store(op0 + op1);
           break;
         case 21: // SUB
-          store((op0 - op1) | 0);
+          store(op0 - op1);
           break;
         case 22: // MUL
-          store(Math.imul(op0, op1));
+          store(Math.floor(op0 * op1));
           break;
         case 23: // DIV
-          store(Math.trunc(op0 / op1));
+          store(Math.floor(op0 / op1));
           break;
         case 24: // MOD
           store(op0 % op1);
           break;
         case 128: // ZERO?
-          predicate(!op0);
+          predicate(op0 === 0);
           break;
         case 129: // NEXT?
-          store((x = mem[objects + op0 * 9 + 5]));
-          predicate(!!x);
+          x = mem[objects + op0 * 9 + 5];
+          store(x);
+          predicate(x !== 0);
           break;
         case 130: // FIRST?
-          store((x = mem[objects + op0 * 9 + 6]));
-          predicate(!!x);
+          x = mem[objects + op0 * 9 + 6];
+          store(x);
+          predicate(x !== 0);
           break;
         case 131: // LOC
           store(mem[objects + op0 * 9 + 4]);
           break;
         case 132: // PTSIZE
-          store((mem[(op0 - 1) & 65535] >> 5) + 1);
+          store((mem[op0 - 1] >> 5) + 1);
           break;
         case 133: // INC
-          x = xfetch(op0);
-          xstore(op0, x + 1);
+          xstore(op0, xfetch(op0) + 1);
           break;
         case 134: // DEC
-          x = xfetch(op0);
-          xstore(op0, x - 1);
+          xstore(op0, xfetch(op0) - 1);
           break;
         case 135: // PRINTB
-          yield* this.genPrint(this.getText(op0 & 65535));
+          yield* this.genPrint(this.getText(op0));
           break;
         case 137: // REMOVE
           move(op0, 0);
@@ -660,7 +694,7 @@ export class ZMachineEngine {
           break;
         case 181: // SAVE
           this.savedFlags = this.get(16);
-          predicate(yield* this.save(this.serialize(ds, cs, pc)));
+          predicate(yield* this.save(this.serialize(ds, cs, instPc)));
           break;
         case 182: { // RESTORE
           this.savedFlags = this.get(16);
@@ -668,9 +702,9 @@ export class ZMachineEngine {
           let zState = zBuf ? this.deserialize(zBuf) : null;
           this.put(16, this.savedFlags);
           if (zState) {
-            ds = zState[0];
-            cs = zState[1];
-            pc = zState[2];
+            ds = zState.ds;
+            cs = zState.cs;
+            pc = zState.pc;
           }
           predicate(!!zState);
           break;
@@ -685,7 +719,7 @@ export class ZMachineEngine {
           ds.pop();
           break;
         case 186: // QUIT
-          this.activePc = pc;
+          this.activePc = instPc;
           this.activeCs = cs;
           this.activeDs = ds;
           return;
@@ -734,7 +768,7 @@ export class ZMachineEngine {
             xfetch(18),
             xfetch(17)
           );
-          this.activePc = pc;
+          this.activePc = instPc;
           this.activeCs = cs;
           this.activeDs = ds;
           const userInput: string = yield* this.read(mem[op0 & 65535]);

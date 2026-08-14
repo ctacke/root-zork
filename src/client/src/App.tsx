@@ -100,7 +100,6 @@ export const App: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Error starting game:", err);
-      alert(`Could not start game: ${err.message || "Unknown error"}`);
     } finally {
       setIsExecuting(false);
       loadGameList();
@@ -109,30 +108,32 @@ export const App: React.FC = () => {
 
   // Send player command
   const handleSendCommand = async (command: string) => {
-    if (command.toLowerCase() === "menu" || command.toLowerCase() === "exit") {
+    const trimmed = command.trim();
+
+    if (trimmed.toLowerCase() === "menu" || trimmed.toLowerCase() === "exit") {
       setView("menu");
       loadGameList();
       return;
     }
 
-    if (command.toLowerCase() === "clear" || command.toLowerCase() === "cls") {
+    if (trimmed.toLowerCase() === "clear" || trimmed.toLowerCase() === "cls") {
       setLogs([]);
       return;
     }
 
-    if (command.toLowerCase() === "save") {
+    if (trimmed.toLowerCase() === "save") {
       await loadSaveSlots(activeGameId);
       setIsSaveModalOpen(true);
       return;
     }
 
-    if (command.toLowerCase() === "restore") {
+    if (trimmed.toLowerCase() === "restore") {
       await loadSaveSlots(activeGameId);
       setIsSaveModalOpen(true);
       return;
     }
 
-    if (command.toLowerCase() === "help" || command.toLowerCase() === "hint" || command.toLowerCase() === "hints") {
+    if (trimmed.toLowerCase() === "help" || trimmed.toLowerCase() === "hint" || trimmed.toLowerCase() === "hints") {
       setIsHelpModalOpen(true);
       return;
     }
@@ -155,14 +156,33 @@ export const App: React.FC = () => {
         setScore(resp.score);
         setMoves(resp.moves);
 
-        setLogs(prev => [
-          ...prev,
-          {
-            id: `out_${Date.now()}`,
-            type: "output",
-            text: resp.outputText || ""
-          }
-        ]);
+        if (resp.outputText) {
+          setLogs(prev => [
+            ...prev,
+            {
+              id: `out_${Date.now()}`,
+              type: "output",
+              text: resp.outputText || ""
+            }
+          ]);
+        }
+
+        // When game terminates (e.g. player quits with 'y' or dies/game over)
+        if (resp.isGameOver) {
+          setLogs(prev => [
+            ...prev,
+            {
+              id: `over_${Date.now()}`,
+              type: "system",
+              text: `[Game Session Ended. Returning to Main Menu...]`
+            }
+          ]);
+
+          setTimeout(() => {
+            setView("menu");
+            loadGameList();
+          }, 1500);
+        }
       }
     } catch (err: any) {
       console.error("Error sending command:", err);
@@ -210,8 +230,7 @@ export const App: React.FC = () => {
       setLocation(resp.location);
       setScore(resp.score);
       setMoves(resp.moves);
-      setLogs(prev => [
-        ...prev,
+      setLogs([
         {
           id: `restore_${Date.now()}`,
           type: "system",
@@ -219,6 +238,7 @@ export const App: React.FC = () => {
         }
       ]);
       setView("game");
+      loadGameList();
     }
   };
 
@@ -232,6 +252,10 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") {
+        if (e.key === "Escape" && view === "game" && !isSaveModalOpen && !isHelpModalOpen) {
+          setView("menu");
+          loadGameList();
+        }
         return;
       }
 
@@ -241,12 +265,17 @@ export const App: React.FC = () => {
         if (e.key === "3") handleSelectGame("zork3", false);
         if (e.key.toLowerCase() === "r") handleSelectGame(activeGameId, false);
         if (e.key.toLowerCase() === "h" || e.key === "?") setIsHelpModalOpen(true);
+      } else if (view === "game" && !isSaveModalOpen && !isHelpModalOpen) {
+        if (e.key === "Escape") {
+          setView("menu");
+          loadGameList();
+        }
       }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [view, activeGameId, isSaveModalOpen, isHelpModalOpen]);
+  }, [view, activeGameId, isSaveModalOpen, isHelpModalOpen, loadGameList]);
 
   return (
     <div className="zork-app-wrapper">
