@@ -1,6 +1,5 @@
 {
   "name": "@zork/server",
-  "version": "1.0.1",
   "private": true,
   "dependencies": {
     "@rootsdk/server-app": "^0.19.1",

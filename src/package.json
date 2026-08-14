@@ -2,7 +2,6 @@
   "name": "@zork/app",
   "author": "Chris Tacke",
   "description": "Zork Trilogy - Classic Infocom Text Adventure",
-  "version": "1.0.0",
   "private": true,
   "engines": {
     "node": ">=22"
