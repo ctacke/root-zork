@@ -655,6 +655,162 @@ html, body {
 }
 
 /* =========================================================
+   LEADERBOARD (TOP 20) MODAL
+   ========================================================= */
+.modal-box.leaderboard-box {
+  max-width: 720px;
+}
+
+.leaderboard-body {
+  padding: 12px 14px;
+  gap: 10px;
+}
+
+.leaderboard-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px dashed var(--border-green);
+  padding-bottom: 8px;
+}
+
+.leaderboard-tab-btn {
+  flex: 1;
+  background: rgba(8, 20, 8, 0.7);
+  border: 1px solid var(--border-green);
+  color: var(--phosphor-green);
+  padding: 5px 8px;
+  font-family: var(--mono-code-font);
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.leaderboard-tab-btn:hover {
+  border-color: var(--phosphor-bright);
+  color: var(--phosphor-bright);
+}
+
+.leaderboard-tab-btn.active {
+  background: var(--phosphor-green);
+  color: #030803;
+  border-color: var(--phosphor-green);
+  box-shadow: 0 0 8px rgba(51, 255, 51, 0.4);
+}
+
+.leaderboard-game-subtitle {
+  font-family: var(--mono-code-font);
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--phosphor-amber);
+  text-align: center;
+}
+
+.leaderboard-loading, .leaderboard-empty {
+  text-align: center;
+  padding: 24px 10px;
+  font-size: 16px;
+  color: var(--phosphor-bright);
+  line-height: 1.4;
+}
+
+.leaderboard-table-wrapper {
+  max-height: 52vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-green);
+  border-radius: 2px;
+  background: rgba(4, 12, 4, 0.6);
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono-code-font);
+  font-size: 13px;
+}
+
+.leaderboard-table th {
+  position: sticky;
+  top: 0;
+  background: rgba(18, 48, 18, 0.95);
+  color: var(--phosphor-bright);
+  padding: 6px 8px;
+  font-weight: bold;
+  border-bottom: 1px solid var(--phosphor-green);
+  z-index: 10;
+  text-align: left;
+}
+
+.leaderboard-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(34, 111, 34, 0.4);
+  white-space: nowrap;
+}
+
+.leaderboard-table tr:hover {
+  background: rgba(20, 55, 20, 0.4);
+}
+
+.leaderboard-table tr.current-user-row {
+  background: rgba(51, 255, 51, 0.12);
+  border-left: 3px solid var(--phosphor-bright);
+}
+
+.leaderboard-table tr.rank-1 td:first-child {
+  color: var(--phosphor-amber);
+  text-shadow: 0 0 6px rgba(255, 176, 0, 0.6);
+}
+
+.leaderboard-table tr.rank-2 td:first-child {
+  color: #ffffff;
+}
+
+.leaderboard-table tr.rank-3 td:first-child {
+  color: #cd7f32;
+}
+
+.adventurer-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.adventurer-name {
+  font-weight: bold;
+  color: var(--phosphor-bright);
+}
+
+.you-badge {
+  background: var(--phosphor-green);
+  color: #030803;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.location-cell {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--phosphor-green);
+  opacity: 0.9;
+}
+
+.leaderboard-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono-code-font);
+  font-size: 11px;
+  color: var(--phosphor-dim);
+  border-top: 1px dashed var(--border-green);
+  padding-top: 8px;
+}
+
+/* =========================================================
    HELP & COMMAND REFERENCE MODAL
    ========================================================= */
 .help-content {

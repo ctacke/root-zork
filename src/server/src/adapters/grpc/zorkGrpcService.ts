@@ -1,4 +1,4 @@
-import { Client } from "@rootsdk/server-app";
+import { rootServer } from "@rootsdk/server-app";
 import { ZorkServiceBase } from "@zork/gen-server";
 import {
   GetGameListRequest,
@@ -15,40 +15,78 @@ import {
   ListSaveSlotsResponse,
   DeleteSaveSlotRequest,
   DeleteSaveSlotResponse,
+  GetLeaderboardRequest,
+  GetLeaderboardResponse,
   GetActiveSessionRequest,
   GetActiveSessionResponse,
   AbandonGameRequest,
   AbandonGameResponse,
   GameInfo,
-  SaveSlotInfo
+  SaveSlotInfo,
+  LeaderboardEntry
 } from "@zork/gen-shared";
 import { zorkGameManager } from "../../services/zorkGameManager";
 
+type Client = any;
+
 export class ZorkGrpcService extends ZorkServiceBase {
+  private userNameCache = new Map<string, string>();
+
   private getUserId(client: Client): string {
-    return (
-      (client as any)?.user?.id ||
-      (client as any)?.userId ||
-      (client as any)?.user_id ||
-      "default_adventurer"
-    );
+    const id = client?.userId || client?.user?.id || client?.user_id;
+    if (!id || id.trim() === "") {
+      return "guest-adventurer";
+    }
+    return id;
   }
 
-  private getUserNickname(client: Client): string {
+  public async resolveUserName(userId: string, client?: Client): Promise<string> {
+    if (!userId || userId === "guest-adventurer") {
+      return "Adventurer";
+    }
+
+    if (this.userNameCache.has(userId)) {
+      return this.userNameCache.get(userId)!;
+    }
+
+    // 1. Try resolving via Root Platform Community Members API
+    try {
+      const userInfo = await rootServer.community.communityMembers.get({
+        userId: userId as any
+      });
+      const u = userInfo as any;
+      const name = u?.nickname || u?.displayName || u?.name || u?.username;
+      if (name && typeof name === "string" && name.trim()) {
+        console.log(`[ZorkGrpcService] Resolved Root member name for ${userId}: "${name.trim()}"`);
+        this.userNameCache.set(userId, name.trim());
+        return name.trim();
+      }
+    } catch (err) {
+      // ignore
+    }
+
+    // 2. Check client context object
     const c = client as any;
-    return (
+    const clientName =
       c?.user?.nickname ||
       c?.user?.displayName ||
       c?.user?.name ||
       c?.user?.username ||
-      c?.nickname ||
-      "Adventurer"
-    );
+      c?.nickname;
+
+    if (clientName && typeof clientName === "string" && clientName.trim() && clientName !== "Adventurer") {
+      this.userNameCache.set(userId, clientName.trim());
+      return clientName.trim();
+    }
+
+    // 3. Fallback to generic name with short ID
+    const shortId = userId.length > 6 ? userId.slice(-6) : userId;
+    return `Adventurer ${shortId}`;
   }
 
   async getGameList(request: GetGameListRequest, client: Client): Promise<GetGameListResponse> {
     const userId = this.getUserId(client);
-    const userNickname = this.getUserNickname(client);
+    const userNickname = await this.resolveUserName(userId, client);
     const result = await zorkGameManager.getGameList(userId);
 
     const gameInfos: GameInfo[] = result.games.map(g => ({
@@ -73,10 +111,12 @@ export class ZorkGrpcService extends ZorkServiceBase {
 
   async startGame(request: StartGameRequest, client: Client): Promise<StartGameResponse> {
     const userId = this.getUserId(client);
+    const userNickname = await this.resolveUserName(userId, client);
     const gameId = request.gameId || "zork1";
     const restart = !!request.restart;
 
-    const result = await zorkGameManager.startGame(userId, gameId, restart);
+    console.log(`[ZorkGrpcService] startGame for userId: "${userId}" (${userNickname}), gameId: "${gameId}", restart: ${restart}`);
+    const result = await zorkGameManager.startGame(userId, gameId, restart, userNickname);
 
     return {
       success: result.success,
@@ -92,10 +132,11 @@ export class ZorkGrpcService extends ZorkServiceBase {
 
   async sendCommand(request: SendCommandRequest, client: Client): Promise<SendCommandResponse> {
     const userId = this.getUserId(client);
+    const userNickname = await this.resolveUserName(userId, client);
     const gameId = request.gameId || "zork1";
     const command = request.command || "";
 
-    const result = await zorkGameManager.sendCommand(userId, gameId, command);
+    const result = await zorkGameManager.sendCommand(userId, gameId, command, userNickname);
 
     return {
       success: result.success,
@@ -114,6 +155,7 @@ export class ZorkGrpcService extends ZorkServiceBase {
     const slotName = request.slotName || "";
     const description = request.description || "";
 
+    console.log(`[ZorkGrpcService] saveSlot "${slotName}" for userId: "${userId}", gameId: "${gameId}"`);
     const result = await zorkGameManager.saveSlot(userId, gameId, slotName, description);
 
     return {
@@ -125,10 +167,12 @@ export class ZorkGrpcService extends ZorkServiceBase {
 
   async restoreSlot(request: RestoreSlotRequest, client: Client): Promise<RestoreSlotResponse> {
     const userId = this.getUserId(client);
+    const userNickname = await this.resolveUserName(userId, client);
     const gameId = request.gameId || "zork1";
     const slotId = request.slotId || "";
 
-    const result = await zorkGameManager.restoreSlot(userId, gameId, slotId);
+    console.log(`[ZorkGrpcService] restoreSlot "${slotId}" for userId: "${userId}", gameId: "${gameId}"`);
+    const result = await zorkGameManager.restoreSlot(userId, gameId, slotId, userNickname);
 
     return {
       success: result.success,
@@ -145,6 +189,7 @@ export class ZorkGrpcService extends ZorkServiceBase {
     const gameId = request.gameId || undefined;
 
     const result = await zorkGameManager.listSaveSlots(userId, gameId);
+    console.log(`[ZorkGrpcService] listSaveSlots for userId: "${userId}", gameId: "${gameId || 'all'}" -> ${result.slots.length} slots found`);
 
     return {
       slots: result.slots as SaveSlotInfo[]
@@ -155,10 +200,25 @@ export class ZorkGrpcService extends ZorkServiceBase {
     const userId = this.getUserId(client);
     const slotId = request.slotId || "";
 
+    console.log(`[ZorkGrpcService] deleteSaveSlot "${slotId}" for userId: "${userId}"`);
     const result = await zorkGameManager.deleteSaveSlot(userId, slotId);
 
     return {
       success: result.success
+    };
+  }
+
+  async getLeaderboard(request: GetLeaderboardRequest, client: Client): Promise<GetLeaderboardResponse> {
+    const gameId = request.gameId || "zork1";
+    const limit = request.limit || 20;
+
+    const result = await zorkGameManager.getLeaderboard(gameId, limit, async userId => {
+      return await this.resolveUserName(userId, client);
+    });
+
+    return {
+      entries: result.entries as LeaderboardEntry[],
+      gameId: result.gameId
     };
   }
 
@@ -168,9 +228,15 @@ export class ZorkGrpcService extends ZorkServiceBase {
 
     const result = await zorkGameManager.getActiveSession(userId, gameId);
 
+    if (!result.hasActiveSession || !result.session) {
+      return {
+        hasActiveSession: false
+      };
+    }
+
     return {
-      hasActiveSession: result.hasActiveSession,
-      session: result.session ? {
+      hasActiveSession: true,
+      session: {
         gameId: result.session.gameId,
         gameTitle: result.session.gameTitle,
         location: result.session.location,
@@ -179,7 +245,7 @@ export class ZorkGrpcService extends ZorkServiceBase {
         transcript: result.session.transcript,
         isGameOver: result.session.isGameOver,
         statusType: result.session.statusType
-      } : undefined
+      }
     };
   }
 

@@ -125,7 +125,7 @@ export class ZorkGameManager {
     };
   }
 
-  public async startGame(userId: string, gameId: string, restart: boolean = false) {
+  public async startGame(userId: string, gameId: string, restart: boolean = false, username: string = 'Adventurer') {
     const key = this.getSessionKey(userId, gameId);
     const storyBuffer = this.getStoryBuffer(gameId);
     const gameMeta = GAME_CATALOG[gameId] || GAME_CATALOG.zork1;
@@ -160,6 +160,16 @@ export class ZorkGameManager {
           };
           this.activeSessions.set(key, session);
           await zorkDb.setLastActiveGame(userId, gameId);
+
+          // Record score in leaderboard
+          await zorkDb.recordScore(
+            userId,
+            username,
+            gameId,
+            session.lastScore,
+            session.lastMoves,
+            session.lastLocation
+          );
 
           const welcomeBack = `[Resumed ${gameMeta.title} from auto-save]\nLocation: ${session.lastLocation} | Score: ${session.lastScore} | Moves: ${session.lastMoves}\n\nType 'look' or your next command.`;
           return {
@@ -209,6 +219,16 @@ export class ZorkGameManager {
     );
     await zorkDb.setLastActiveGame(userId, gameId);
 
+    // Record initial score in leaderboard
+    await zorkDb.recordScore(
+      userId,
+      username,
+      gameId,
+      session.lastScore,
+      session.lastMoves,
+      session.lastLocation
+    );
+
     return {
       success: true,
       outputText: cleanOutput,
@@ -221,12 +241,12 @@ export class ZorkGameManager {
     };
   }
 
-  public async sendCommand(userId: string, gameId: string, command: string) {
+  public async sendCommand(userId: string, gameId: string, command: string, username: string = 'Adventurer') {
     const key = this.getSessionKey(userId, gameId);
     let session = this.activeSessions.get(key);
 
     if (!session) {
-      await this.startGame(userId, gameId, false);
+      await this.startGame(userId, gameId, false, username);
       session = this.activeSessions.get(key);
     }
 
@@ -262,6 +282,20 @@ export class ZorkGameManager {
     session.transcript.push(`> ${trimmedCmd}\n${cleanOutput}`);
     if (session.transcript.length > 50) {
       session.transcript = session.transcript.slice(-50);
+    }
+
+    // Update leaderboard with latest high score/moves
+    try {
+      await zorkDb.recordScore(
+        userId,
+        username,
+        gameId,
+        session.lastScore,
+        session.lastMoves,
+        session.lastLocation
+      );
+    } catch (err) {
+      console.error('[ZorkGameManager] Leaderboard update error:', err);
     }
 
     // If the game ended, delete active memory session
@@ -339,7 +373,7 @@ export class ZorkGameManager {
     };
   }
 
-  public async restoreSlot(userId: string, gameId: string, slotId: string) {
+  public async restoreSlot(userId: string, gameId: string, slotId: string, username: string = 'Adventurer') {
     const slot = await zorkDb.getSaveSlot(userId, slotId);
     if (!slot) {
       throw new Error(`Save slot not found: ${slotId}`);
@@ -382,6 +416,16 @@ export class ZorkGameManager {
     );
     await zorkDb.setLastActiveGame(userId, actualGameId);
 
+    // Record score in leaderboard
+    await zorkDb.recordScore(
+      userId,
+      username,
+      actualGameId,
+      slot.score,
+      slot.moves,
+      slot.location
+    );
+
     const message = `[Restored save slot: "${slot.slot_name}"]\nLocation: ${slot.location} | Score: ${slot.score} | Moves: ${slot.moves}\n\nType 'look' or your next command.`;
     return {
       success: true,
@@ -390,6 +434,45 @@ export class ZorkGameManager {
       location: slot.location,
       score: slot.score,
       moves: slot.moves
+    };
+  }
+
+  public async getLeaderboard(
+    gameId: string,
+    limit: number = 20,
+    nameResolver?: (userId: string) => Promise<string>
+  ) {
+    const rows = await zorkDb.getLeaderboard(gameId, limit);
+    const entries = await Promise.all(
+      rows.map(async (r, idx) => {
+        let username = r.username;
+        if (nameResolver && (!username || username === 'Adventurer' || username.startsWith('Adventurer '))) {
+          try {
+            const resolved = await nameResolver(r.user_id);
+            if (resolved && resolved !== 'Adventurer' && !resolved.startsWith('Adventurer ')) {
+              username = resolved;
+              await zorkDb.recordScore(r.user_id, resolved, r.game_id, r.score, r.moves, r.location);
+            }
+          } catch {
+            // ignore
+          }
+        }
+        return {
+          rank: idx + 1,
+          userId: r.user_id,
+          username: username || 'Adventurer',
+          gameId: r.game_id,
+          score: r.score,
+          moves: r.moves,
+          location: r.location || '',
+          updatedAt: r.updated_at
+        };
+      })
+    );
+
+    return {
+      entries,
+      gameId
     };
   }
 

@@ -26,6 +26,17 @@ message SaveSlotInfo {
   string created_at = 8;
 }
 
+message LeaderboardEntry {
+  int32 rank = 1;
+  string user_id = 2;
+  string username = 3;
+  string game_id = 4;
+  int32 score = 5;
+  int32 moves = 6;
+  string location = 7;
+  string updated_at = 8;
+}
+
 message ActiveSessionProto {
   string game_id = 1;
   string game_title = 2;
@@ -121,6 +132,16 @@ message DeleteSaveSlotResponse {
   bool success = 1;
 }
 
+message GetLeaderboardRequest {
+  string game_id = 1;
+  int32 limit = 2;
+}
+
+message GetLeaderboardResponse {
+  repeated LeaderboardEntry entries = 1;
+  string game_id = 2;
+}
+
 message GetActiveSessionRequest {
   string game_id = 1;
 }
@@ -146,6 +167,7 @@ service ZorkService {
   rpc RestoreSlot (RestoreSlotRequest) returns (RestoreSlotResponse);
   rpc ListSaveSlots (ListSaveSlotsRequest) returns (ListSaveSlotsResponse);
   rpc DeleteSaveSlot (DeleteSaveSlotRequest) returns (DeleteSaveSlotResponse);
+  rpc GetLeaderboard (GetLeaderboardRequest) returns (GetLeaderboardResponse);
   rpc GetActiveSession (GetActiveSessionRequest) returns (GetActiveSessionResponse);
   rpc AbandonGame (AbandonGameRequest) returns (AbandonGameResponse);
 }

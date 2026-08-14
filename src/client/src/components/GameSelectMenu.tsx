@@ -7,6 +7,7 @@ interface GameSelectMenuProps {
   currentActiveGameId?: string;
   onSelectGame: (gameId: string, restart: boolean) => void;
   onOpenSaveSlots: (gameId?: string) => void;
+  onOpenLeaderboard: (gameId?: string) => void;
   onOpenHelp: () => void;
   isExecuting: boolean;
   userNickname: string;
@@ -17,6 +18,7 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
   currentActiveGameId,
   onSelectGame,
   onOpenSaveSlots,
+  onOpenLeaderboard,
   onOpenHelp,
   isExecuting,
   userNickname
@@ -109,6 +111,13 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
                   >
                     💾 SAVES
                   </button>
+
+                  <button
+                    className="retro-btn"
+                    onClick={() => onOpenLeaderboard(game.id)}
+                  >
+                    🏆 TOP 20
+                  </button>
                 </div>
               </div>
             );
@@ -117,11 +126,14 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
 
         {/* Bottom Menu info */}
         <div className="menu-footer-actions">
-          <button className="retro-btn" onClick={onOpenHelp}>
-            ❓ ADVENTURER'S GUIDE
+          <button className="retro-btn" onClick={() => onOpenLeaderboard()}>
+            🏆 TOP 20 LEADERBOARD
           </button>
           <button className="retro-btn" onClick={() => onOpenSaveSlots()}>
             📁 ALL SAVE SLOTS
+          </button>
+          <button className="retro-btn" onClick={onOpenHelp}>
+            ❓ ADVENTURER'S GUIDE
           </button>
         </div>
       </div>

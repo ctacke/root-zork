@@ -1,5 +1,6 @@
 import * as sqlite3 from 'sqlite3';
 import * as path from 'path';
+import { rootServer } from '@rootsdk/server-app';
 
 export interface DbGameSession {
   user_id: string;
@@ -26,16 +27,33 @@ export interface DbSaveSlot {
   created_at: string;
 }
 
-export class ZorkDatabase {
-  private db: sqlite3.Database;
+export interface DbLeaderboardEntry {
+  user_id: string;
+  game_id: string;
+  username: string;
+  score: number;
+  moves: number;
+  location: string;
+  updated_at: string;
+}
 
-  constructor() {
-    const dbPath = path.join(__dirname, '..', '..', 'rootsdk.sqlite3');
-    this.db = new sqlite3.Database(dbPath);
-    this.initializeTables();
+export class ZorkDatabase {
+  private db: sqlite3.Database | null = null;
+
+  public getDb(): sqlite3.Database {
+    if (!this.db) {
+      const rootDbPath = (rootServer as any)?.dataStore?.config?.sqlite3?.filename;
+      const dbPath = rootDbPath || path.join(__dirname, '..', '..', 'rootsdk.sqlite3');
+      console.log(`[ZorkDatabase] Connecting to SQLite database at: ${dbPath}`);
+      this.db = new sqlite3.Database(dbPath);
+      this.initializeTables();
+    }
+    return this.db;
   }
 
   private initializeTables(): void {
+    if (!this.db) return;
+
     const createSessionsSQL = `
       CREATE TABLE IF NOT EXISTS game_sessions (
         user_id TEXT NOT NULL,
@@ -66,6 +84,23 @@ export class ZorkDatabase {
       )
     `;
 
+    const createLeaderboardSQL = `
+      CREATE TABLE IF NOT EXISTS leaderboard_entries (
+        user_id TEXT NOT NULL,
+        game_id TEXT NOT NULL,
+        username TEXT NOT NULL,
+        score INTEGER NOT NULL DEFAULT 0,
+        moves INTEGER NOT NULL DEFAULT 0,
+        location TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, game_id)
+      )
+    `;
+
+    const createIndexSQL = `
+      CREATE INDEX IF NOT EXISTS idx_leaderboard ON leaderboard_entries (game_id, score DESC, moves ASC)
+    `;
+
     const createUserPrefsSQL = `
       CREATE TABLE IF NOT EXISTS user_preferences (
         user_id TEXT PRIMARY KEY,
@@ -75,9 +110,11 @@ export class ZorkDatabase {
     `;
 
     this.db.serialize(() => {
-      this.db.run(createSessionsSQL);
-      this.db.run(createSaveSlotsSQL);
-      this.db.run(createUserPrefsSQL);
+      this.db?.run(createSessionsSQL);
+      this.db?.run(createSaveSlotsSQL);
+      this.db?.run(createLeaderboardSQL);
+      this.db?.run(createIndexSQL);
+      this.db?.run(createUserPrefsSQL);
     });
   }
 
@@ -98,7 +135,7 @@ export class ZorkDatabase {
       `;
       const base64Buf = Buffer.from(stateBuffer).toString('base64');
       const transcriptJson = JSON.stringify(transcript);
-      this.db.run(
+      this.getDb().run(
         sql,
         [userId, gameId, base64Buf, location, score, moves, transcriptJson],
         err => {
@@ -112,7 +149,7 @@ export class ZorkDatabase {
   public async getSession(userId: string, gameId: string): Promise<DbGameSession | null> {
     return new Promise((resolve, reject) => {
       const sql = `SELECT * FROM game_sessions WHERE user_id = ? AND game_id = ?`;
-      this.db.get(sql, [userId, gameId], (err, row: DbGameSession | undefined) => {
+      this.getDb().get(sql, [userId, gameId], (err, row: DbGameSession | undefined) => {
         if (err) reject(err);
         else resolve(row || null);
       });
@@ -122,7 +159,7 @@ export class ZorkDatabase {
   public async getAllSessionsForUser(userId: string): Promise<DbGameSession[]> {
     return new Promise((resolve, reject) => {
       const sql = `SELECT * FROM game_sessions WHERE user_id = ?`;
-      this.db.all(sql, [userId], (err, rows: DbGameSession[] | undefined) => {
+      this.getDb().all(sql, [userId], (err, rows: DbGameSession[] | undefined) => {
         if (err) reject(err);
         else resolve(rows || []);
       });
@@ -132,7 +169,7 @@ export class ZorkDatabase {
   public async deleteSession(userId: string, gameId: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const sql = `DELETE FROM game_sessions WHERE user_id = ? AND game_id = ?`;
-      this.db.run(sql, [userId, gameId], err => {
+      this.getDb().run(sql, [userId, gameId], err => {
         if (err) reject(err);
         else resolve();
       });
@@ -159,7 +196,7 @@ export class ZorkDatabase {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `;
       const base64Buf = Buffer.from(slot.stateBuffer).toString('base64');
-      this.db.run(
+      this.getDb().run(
         sql,
         [
           slot.id,
@@ -189,7 +226,7 @@ export class ZorkDatabase {
         params.push(gameId);
       }
       sql += ` ORDER BY created_at DESC`;
-      this.db.all(sql, params, (err, rows: DbSaveSlot[] | undefined) => {
+      this.getDb().all(sql, params, (err, rows: DbSaveSlot[] | undefined) => {
         if (err) reject(err);
         else resolve(rows || []);
       });
@@ -199,7 +236,7 @@ export class ZorkDatabase {
   public async getSaveSlot(userId: string, slotId: string): Promise<DbSaveSlot | null> {
     return new Promise((resolve, reject) => {
       const sql = `SELECT * FROM save_slots WHERE user_id = ? AND id = ?`;
-      this.db.get(sql, [userId, slotId], (err, row: DbSaveSlot | undefined) => {
+      this.getDb().get(sql, [userId, slotId], (err, row: DbSaveSlot | undefined) => {
         if (err) reject(err);
         else resolve(row || null);
       });
@@ -209,9 +246,71 @@ export class ZorkDatabase {
   public async deleteSaveSlot(userId: string, slotId: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const sql = `DELETE FROM save_slots WHERE user_id = ? AND id = ?`;
-      this.db.run(sql, [userId, slotId], err => {
+      this.getDb().run(sql, [userId, slotId], err => {
         if (err) reject(err);
         else resolve();
+      });
+    });
+  }
+
+  public async recordScore(
+    userId: string,
+    username: string,
+    gameId: string,
+    score: number,
+    moves: number,
+    location: string
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const selectSql = `SELECT score, moves FROM leaderboard_entries WHERE user_id = ? AND game_id = ?`;
+      this.getDb().get(selectSql, [userId, gameId], (err, row: { score: number; moves: number } | undefined) => {
+        if (err) return reject(err);
+
+        if (!row) {
+          // No prior entry: insert
+          const insertSql = `
+            INSERT INTO leaderboard_entries (user_id, game_id, username, score, moves, location, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `;
+          this.getDb().run(insertSql, [userId, gameId, username, score, moves, location], insertErr => {
+            if (insertErr) reject(insertErr);
+            else resolve();
+          });
+        } else {
+          // Better score or same score with fewer moves
+          const isBetter = score > row.score || (score === row.score && moves < row.moves);
+          if (isBetter) {
+            const updateSql = `
+              UPDATE leaderboard_entries
+              SET username = ?, score = ?, moves = ?, location = ?, updated_at = CURRENT_TIMESTAMP
+              WHERE user_id = ? AND game_id = ?
+            `;
+            this.getDb().run(updateSql, [username, score, moves, location, userId, gameId], updateErr => {
+              if (updateErr) reject(updateErr);
+              else resolve();
+            });
+          } else {
+            // Keep username fresh
+            const updateNameSql = `UPDATE leaderboard_entries SET username = ? WHERE user_id = ? AND game_id = ?`;
+            this.getDb().run(updateNameSql, [username, userId, gameId], () => resolve());
+          }
+        }
+      });
+    });
+  }
+
+  public async getLeaderboard(gameId: string, limit: number = 20): Promise<DbLeaderboardEntry[]> {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT user_id, game_id, username, score, moves, location, updated_at
+        FROM leaderboard_entries
+        WHERE game_id = ?
+        ORDER BY score DESC, moves ASC, updated_at ASC
+        LIMIT ?
+      `;
+      this.getDb().all(sql, [gameId, limit], (err, rows: DbLeaderboardEntry[] | undefined) => {
+        if (err) reject(err);
+        else resolve(rows || []);
       });
     });
   }
@@ -222,7 +321,7 @@ export class ZorkDatabase {
         INSERT OR REPLACE INTO user_preferences (user_id, last_active_game_id, updated_at)
         VALUES (?, ?, CURRENT_TIMESTAMP)
       `;
-      this.db.run(sql, [userId, gameId], err => {
+      this.getDb().run(sql, [userId, gameId], err => {
         if (err) reject(err);
         else resolve();
       });
@@ -232,7 +331,7 @@ export class ZorkDatabase {
   public async getLastActiveGame(userId: string): Promise<string | null> {
     return new Promise((resolve, reject) => {
       const sql = `SELECT last_active_game_id FROM user_preferences WHERE user_id = ?`;
-      this.db.get(sql, [userId], (err, row: { last_active_game_id: string } | undefined) => {
+      this.getDb().get(sql, [userId], (err, row: { last_active_game_id: string } | undefined) => {
         if (err) reject(err);
         else resolve(row ? row.last_active_game_id : null);
       });
@@ -240,7 +339,10 @@ export class ZorkDatabase {
   }
 
   public close(): void {
-    this.db.close();
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
   }
 }
 

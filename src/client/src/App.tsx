@@ -7,6 +7,7 @@ import { Console, LogEntry } from "./components/Console";
 import { GameSelectMenu } from "./components/GameSelectMenu";
 import { SaveLoadModal } from "./components/SaveLoadModal";
 import { HelpModal } from "./components/HelpModal";
+import { LeaderboardModal } from "./components/LeaderboardModal";
 import "./App.css";
 
 const client = new ZorkServiceClient();
@@ -32,6 +33,8 @@ export const App: React.FC = () => {
   // Modals & Overlay state
   const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
+  const [leaderboardGameId, setLeaderboardGameId] = useState<string>("zork1");
   const [saveSlots, setSaveSlots] = useState<SaveSlotInfo[]>([]);
   const [scanlinesEnabled, setScanlinesEnabled] = useState<boolean>(true);
 
@@ -81,6 +84,11 @@ export const App: React.FC = () => {
     } catch (err) {
       console.error("Failed to list save slots:", err);
     }
+  };
+
+  const handleOpenLeaderboard = (gameId?: string) => {
+    setLeaderboardGameId(gameId || activeGameId || "zork1");
+    setIsLeaderboardOpen(true);
   };
 
   // Start or resume a game
@@ -135,6 +143,18 @@ export const App: React.FC = () => {
     if (trimmed.toLowerCase() === "restore") {
       await loadSaveSlots(activeGameId);
       setIsSaveModalOpen(true);
+      return;
+    }
+
+    if (
+      trimmed.toLowerCase() === "leaderboard" ||
+      trimmed.toLowerCase() === "top" ||
+      trimmed.toLowerCase() === "top20" ||
+      trimmed.toLowerCase() === "scores" ||
+      trimmed.toLowerCase() === "highscores" ||
+      trimmed.toLowerCase() === "halloffame"
+    ) {
+      handleOpenLeaderboard(activeGameId);
       return;
     }
 
@@ -257,21 +277,29 @@ export const App: React.FC = () => {
   // Global Keyboard shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") {
-        if (e.key === "Escape" && view === "game" && !isSaveModalOpen && !isHelpModalOpen) {
+      const isInputActive =
+        document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA";
+
+      if (isInputActive) {
+        if (e.key === "Escape" && view === "game" && !isSaveModalOpen && !isHelpModalOpen && !isLeaderboardOpen) {
           setView("menu");
           loadGameList();
         }
         return;
       }
 
-      if (view === "menu" && !isSaveModalOpen && !isHelpModalOpen) {
+      if (isSaveModalOpen || isHelpModalOpen || isLeaderboardOpen) {
+        return;
+      }
+
+      if (view === "menu") {
         if (e.key === "1") handleSelectGame("zork1", false);
         if (e.key === "2") handleSelectGame("zork2", false);
         if (e.key === "3") handleSelectGame("zork3", false);
         if (e.key.toLowerCase() === "r") handleSelectGame(activeGameId, false);
+        if (e.key.toLowerCase() === "l") handleOpenLeaderboard(activeGameId);
         if (e.key.toLowerCase() === "h" || e.key === "?") setIsHelpModalOpen(true);
-      } else if (view === "game" && !isSaveModalOpen && !isHelpModalOpen) {
+      } else if (view === "game") {
         if (e.key === "Escape") {
           setView("menu");
           loadGameList();
@@ -281,7 +309,7 @@ export const App: React.FC = () => {
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [view, activeGameId, isSaveModalOpen, isHelpModalOpen, loadGameList]);
+  }, [view, activeGameId, isSaveModalOpen, isHelpModalOpen, isLeaderboardOpen, loadGameList]);
 
   return (
     <div className="zork-app-wrapper">
@@ -306,6 +334,7 @@ export const App: React.FC = () => {
             loadSaveSlots(activeGameId);
             setIsSaveModalOpen(true);
           }}
+          onOpenLeaderboard={() => handleOpenLeaderboard(activeGameId)}
           onOpenHelpModal={() => setIsHelpModalOpen(true)}
           onClearTerminal={() => setLogs([])}
           scanlinesEnabled={scanlinesEnabled}
@@ -322,6 +351,7 @@ export const App: React.FC = () => {
               loadSaveSlots(targetGameId);
               setIsSaveModalOpen(true);
             }}
+            onOpenLeaderboard={targetGameId => handleOpenLeaderboard(targetGameId)}
             onOpenHelp={() => setIsHelpModalOpen(true)}
             isExecuting={isExecuting}
             userNickname={userNickname}
@@ -353,6 +383,15 @@ export const App: React.FC = () => {
         <HelpModal
           isOpen={isHelpModalOpen}
           onClose={() => setIsHelpModalOpen(false)}
+        />
+
+        {/* Top 20 Leaderboard Modal */}
+        <LeaderboardModal
+          isOpen={isLeaderboardOpen}
+          initialGameId={leaderboardGameId}
+          currentUserNickname={userNickname}
+          client={client}
+          onClose={() => setIsLeaderboardOpen(false)}
         />
       </div>
     </div>

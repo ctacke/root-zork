@@ -9,6 +9,7 @@ interface StatusBarProps {
   isGameView: boolean;
   onOpenMenu: () => void;
   onOpenSaveModal: () => void;
+  onOpenLeaderboard: () => void;
   onOpenHelpModal: () => void;
   onClearTerminal: () => void;
   scanlinesEnabled: boolean;
@@ -24,6 +25,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   isGameView,
   onOpenMenu,
   onOpenSaveModal,
+  onOpenLeaderboard,
   onOpenHelpModal,
   onClearTerminal,
   scanlinesEnabled,
@@ -71,6 +73,14 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           </button>
         )}
         
+        <button
+          className="status-action-btn"
+          onClick={onOpenLeaderboard}
+          title="Top 20 Leaderboard"
+        >
+          🏆 TOP 20
+        </button>
+
         <button
           className="status-action-btn"
           onClick={onOpenSaveModal}
