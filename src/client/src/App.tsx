@@ -11,6 +11,11 @@ import "./App.css";
 
 const client = new ZorkServiceClient();
 
+const cleanOutput = (text: string): string => {
+  if (!text) return "";
+  return text.replace(/\n*>\s*$/, "").trimEnd();
+};
+
 export const App: React.FC = () => {
   const [view, setView] = useState<"menu" | "game">("menu");
   const [games, setGames] = useState<GameInfo[]>([]);
@@ -93,7 +98,7 @@ export const App: React.FC = () => {
           {
             id: `start_${Date.now()}`,
             type: "output",
-            text: resp.outputText || ""
+            text: cleanOutput(resp.outputText || "")
           }
         ]);
         setView("game");
@@ -156,13 +161,14 @@ export const App: React.FC = () => {
         setScore(resp.score);
         setMoves(resp.moves);
 
-        if (resp.outputText) {
+        const cleaned = cleanOutput(resp.outputText || "");
+        if (cleaned) {
           setLogs(prev => [
             ...prev,
             {
               id: `out_${Date.now()}`,
               type: "output",
-              text: resp.outputText || ""
+              text: cleaned
             }
           ]);
         }
@@ -234,7 +240,7 @@ export const App: React.FC = () => {
         {
           id: `restore_${Date.now()}`,
           type: "system",
-          text: resp.outputText || `[Restored save slot]`
+          text: cleanOutput(resp.outputText || `[Restored save slot]`)
         }
       ]);
       setView("game");

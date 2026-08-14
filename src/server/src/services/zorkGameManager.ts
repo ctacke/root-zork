@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { ZMachineEngine, StatusLineData } from '../engine/zmachine';
-import { zorkDb, DbSaveSlot } from '../data/database';
+import { ZMachineEngine } from '../engine/zmachine';
+import { zorkDb } from '../data/database';
 
 export interface GameCatalogEntry {
   id: string;
@@ -16,25 +16,25 @@ export const GAME_CATALOG: Record<string, GameCatalogEntry> = {
   zork1: {
     id: 'zork1',
     title: 'ZORK I: The Great Underground Empire',
-    subtitle: 'Infocom Fantasy Story',
-    releaseInfo: 'Release 119 / Serial 880429',
-    description: 'Explore the Great Underground Empire, collect treasures, and beware of the grue in the dark.',
+    subtitle: 'Infocom Interactive Fiction - A Fantasy Story',
+    releaseInfo: 'Release 119 / Serial 880429 / Inform v6.21',
+    description: 'Explore the Great Underground Empire, collect the 20 legendary Treasures of Zork, and beware of the grue in the dark.',
     storyFileName: 'zork1.z3'
   },
   zork2: {
     id: 'zork2',
     title: 'ZORK II: The Wizard of Frobozz',
-    subtitle: 'The Wizardly Sequel',
+    subtitle: 'Infocom Interactive Fiction - Part Two of the Trilogy',
     releaseInfo: 'Release 63 / Serial 860811',
-    description: 'Venture deeper into the subterranean world and overcome the mischievous Wizard of Frobozz.',
+    description: 'Venture deeper into the subterranean world and overcome the mischievous, unpredictable Wizard of Frobozz.',
     storyFileName: 'zork2.z3'
   },
   zork3: {
     id: 'zork3',
     title: 'ZORK III: The Dungeon Master',
-    subtitle: 'The Final Test',
+    subtitle: 'Infocom Interactive Fiction - The Final Chapter',
     releaseInfo: 'Release 25 / Serial 860811',
-    description: 'Face the ultimate trial of wisdom and cunning to prove yourself worthy of the Dungeon Master.',
+    description: 'Face the ultimate trial of wisdom, cunning, and moral fiber to prove yourself worthy of the Dungeon Master.',
     storyFileName: 'zork3.z3'
   }
 };
@@ -50,37 +50,30 @@ export interface ActiveSession {
   isGameOver: boolean;
 }
 
+export function cleanZorkOutput(text: string): string {
+  if (!text) return '';
+  return text.replace(/\n*>\s*$/, '').trimEnd();
+}
+
 export class ZorkGameManager {
   private storyBuffers: Map<string, Buffer> = new Map();
-  private activeSessions: Map<string, ActiveSession> = new Map(); // key: `${userId}:${gameId}`
+  private activeSessions: Map<string, ActiveSession> = new Map();
 
   constructor() {
-    this.loadStoryFiles();
+    this.preloadStoryFiles();
   }
 
-  private loadStoryFiles(): void {
+  private preloadStoryFiles(): void {
+    const storiesDir = path.join(__dirname, '..', '..', 'stories');
+
     for (const [gameId, entry] of Object.entries(GAME_CATALOG)) {
-      const candidates = [
-        path.join(__dirname, '..', '..', 'stories', entry.storyFileName),
-        path.join(__dirname, '..', 'stories', entry.storyFileName),
-        path.join(__dirname, 'stories', entry.storyFileName),
-        path.join(process.cwd(), 'stories', entry.storyFileName),
-        path.join(process.cwd(), 'server', 'stories', entry.storyFileName),
-        path.join(`C:/repos/historicalsource/${gameId}/COMPILED/${entry.storyFileName}`)
-      ];
-
-      let loaded = false;
-      for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) {
-          console.log(`[ZorkGameManager] Loading ${entry.title} from: ${candidate}`);
-          this.storyBuffers.set(gameId, fs.readFileSync(candidate));
-          loaded = true;
-          break;
-        }
-      }
-
-      if (!loaded) {
-        console.warn(`[ZorkGameManager] Warning: Story file not found for ${gameId}`);
+      const fullPath = path.join(storiesDir, entry.storyFileName);
+      if (fs.existsSync(fullPath)) {
+        const buffer = fs.readFileSync(fullPath);
+        this.storyBuffers.set(gameId, buffer);
+        console.log(`[ZorkGameManager] Loading ${entry.title} from: ${fullPath}`);
+      } else {
+        console.warn(`[ZorkGameManager] Warning: Story file not found: ${fullPath}`);
       }
     }
   }
@@ -92,40 +85,43 @@ export class ZorkGameManager {
   public getStoryBuffer(gameId: string): Buffer {
     const buf = this.storyBuffers.get(gameId);
     if (!buf) {
-      this.loadStoryFiles();
-      const retryBuf = this.storyBuffers.get(gameId);
-      if (!retryBuf) {
-        throw new Error(`Story file not found for game: ${gameId}`);
-      }
-      return retryBuf;
+      throw new Error(`Story file for game "${gameId}" is not loaded.`);
     }
     return buf;
   }
 
   public async getGameList(userId: string) {
-    const sessions = await zorkDb.getAllSessionsForUser(userId);
-    const sessionMap = new Map(sessions.map(s => [s.game_id, s]));
-    const lastActiveGame = await zorkDb.getLastActiveGame(userId);
+    const lastActiveGameId = await zorkDb.getLastActiveGame(userId);
+    const userSessions = await zorkDb.getAllSessionsForUser(userId);
+    const sessionMap = new Map(userSessions.map(s => [s.game_id, s]));
 
-    const list = Object.values(GAME_CATALOG).map(game => {
-      const sess = sessionMap.get(game.id);
+    const games = Object.values(GAME_CATALOG).map(meta => {
+      const dbSession = sessionMap.get(meta.id);
+      const activeMemSession = this.activeSessions.get(this.getSessionKey(userId, meta.id));
+
+      const hasActive = !!(dbSession || activeMemSession);
+      const location = activeMemSession?.lastLocation || dbSession?.location || '';
+      const score = activeMemSession?.lastScore ?? (dbSession?.score || 0);
+      const moves = activeMemSession?.lastMoves ?? (dbSession?.moves || 0);
+      const updatedAt = dbSession?.updated_at || '';
+
       return {
-        id: game.id,
-        title: game.title,
-        subtitle: game.subtitle,
-        releaseInfo: game.releaseInfo,
-        description: game.description,
-        hasActiveGame: !!sess && sess.is_active === 1,
-        lastLocation: sess?.location || '',
-        lastScore: sess?.score || 0,
-        lastMoves: sess?.moves || 0,
-        lastUpdatedAt: sess?.updated_at || ''
+        id: meta.id,
+        title: meta.title,
+        subtitle: meta.subtitle,
+        releaseInfo: meta.releaseInfo,
+        description: meta.description,
+        hasActiveGame: hasActive,
+        lastLocation: location,
+        lastScore: score,
+        lastMoves: moves,
+        lastUpdatedAt: updatedAt
       };
     });
 
     return {
-      games: list,
-      currentActiveGameId: lastActiveGame || 'zork1'
+      games,
+      currentActiveGameId: lastActiveGameId || 'zork1'
     };
   }
 
@@ -140,8 +136,9 @@ export class ZorkGameManager {
     if (!restart && existingDbSession && existingDbSession.state_buffer) {
       try {
         const snapshotBuf = Buffer.from(existingDbSession.state_buffer, 'base64');
+        const uint8Data = new Uint8Array(snapshotBuf.buffer, snapshotBuf.byteOffset, snapshotBuf.byteLength);
         const engine = new ZMachineEngine(storyBuffer);
-        const restored = engine.loadSnapshot(snapshotBuf);
+        const restored = engine.loadSnapshot(uint8Data);
 
         if (restored) {
           let transcript: string[] = [];
@@ -156,15 +153,15 @@ export class ZorkGameManager {
             gameId,
             engine,
             transcript,
-            lastLocation: existingDbSession.location || 'Unknown',
-            lastScore: existingDbSession.score || 0,
-            lastMoves: existingDbSession.moves || 0,
+            lastLocation: existingDbSession.location || engine.currentStatus.location || 'Unknown',
+            lastScore: existingDbSession.score || engine.currentStatus.scoreOrHours,
+            lastMoves: existingDbSession.moves || engine.currentStatus.movesOrMinutes,
             isGameOver: false
           };
           this.activeSessions.set(key, session);
           await zorkDb.setLastActiveGame(userId, gameId);
 
-          const welcomeBack = `[Resumed ${gameMeta.title} from auto-save]\nLocation: ${session.lastLocation} | Score: ${session.lastScore} | Moves: ${session.lastMoves}\n\nType 'look' or your next command.\n`;
+          const welcomeBack = `[Resumed ${gameMeta.title} from auto-save]\nLocation: ${session.lastLocation} | Score: ${session.lastScore} | Moves: ${session.lastMoves}\n\nType 'look' or your next command.`;
           return {
             success: true,
             outputText: welcomeBack,
@@ -184,7 +181,8 @@ export class ZorkGameManager {
     // Start a fresh game
     const engine = new ZMachineEngine(storyBuffer);
     const startResult = engine.start();
-    const transcript = [startResult.output];
+    const cleanOutput = cleanZorkOutput(startResult.output);
+    const transcript = [cleanOutput];
 
     const session: ActiveSession = {
       userId,
@@ -213,7 +211,7 @@ export class ZorkGameManager {
 
     return {
       success: true,
-      outputText: startResult.output,
+      outputText: cleanOutput,
       gameId,
       gameTitle: gameMeta.title,
       location: session.lastLocation,
@@ -242,7 +240,7 @@ export class ZorkGameManager {
     if (trimmedCmd.toLowerCase() === 'menu' || trimmedCmd.toLowerCase() === 'exit') {
       return {
         success: true,
-        outputText: `\n[Returning to Main Menu]\n`,
+        outputText: `[Returning to Main Menu]`,
         gameId,
         location: session.lastLocation,
         score: session.lastScore,
@@ -253,36 +251,43 @@ export class ZorkGameManager {
 
     // Execute through Z-Machine engine
     const execResult = session.engine.sendCommand(trimmedCmd);
+    const cleanOutput = cleanZorkOutput(execResult.output);
+
     session.lastLocation = execResult.status.location || session.lastLocation;
     session.lastScore = execResult.status.scoreOrHours;
     session.lastMoves = execResult.status.movesOrMinutes;
     session.isGameOver = execResult.isGameOver;
 
     // Append to transcript
-    session.transcript.push(`> ${trimmedCmd}\n${execResult.output}`);
+    session.transcript.push(`> ${trimmedCmd}\n${cleanOutput}`);
     if (session.transcript.length > 50) {
       session.transcript = session.transcript.slice(-50);
     }
 
-    // Persist snapshot to SQLite auto-save
-    try {
-      const snapshot = session.engine.getSnapshot();
-      await zorkDb.saveSession(
-        userId,
-        gameId,
-        snapshot,
-        session.lastLocation,
-        session.lastScore,
-        session.lastMoves,
-        session.transcript
-      );
-    } catch (err) {
-      console.error('[ZorkGameManager] Auto-save error:', err);
+    // If the game ended, delete active memory session
+    if (execResult.isGameOver) {
+      this.activeSessions.delete(key);
+    } else {
+      // Persist snapshot to SQLite auto-save
+      try {
+        const snapshot = session.engine.getSnapshot();
+        await zorkDb.saveSession(
+          userId,
+          gameId,
+          snapshot,
+          session.lastLocation,
+          session.lastScore,
+          session.lastMoves,
+          session.transcript
+        );
+      } catch (err) {
+        console.error('[ZorkGameManager] Auto-save error:', err);
+      }
     }
 
     return {
       success: true,
-      outputText: execResult.output,
+      outputText: cleanOutput,
       gameId,
       location: session.lastLocation,
       score: session.lastScore,
@@ -340,21 +345,23 @@ export class ZorkGameManager {
       throw new Error(`Save slot not found: ${slotId}`);
     }
 
-    const key = this.getSessionKey(userId, gameId);
-    const storyBuffer = this.getStoryBuffer(gameId);
+    const actualGameId = slot.game_id || gameId;
+    const key = this.getSessionKey(userId, actualGameId);
+    const storyBuffer = this.getStoryBuffer(actualGameId);
     const engine = new ZMachineEngine(storyBuffer);
     const snapshotBuf = Buffer.from(slot.state_buffer, 'base64');
-    const restored = engine.loadSnapshot(snapshotBuf);
+    const uint8Data = new Uint8Array(snapshotBuf.buffer, snapshotBuf.byteOffset, snapshotBuf.byteLength);
+    const restored = engine.loadSnapshot(uint8Data);
 
     if (!restored) {
-      throw new Error('Failed to deserialize save state.');
+      throw new Error('Failed to deserialize save state. The save state format is invalid or corrupted.');
     }
 
     const session: ActiveSession = {
       userId,
-      gameId,
+      gameId: actualGameId,
       engine,
-      transcript: [`[Restored save slot: ${slot.slot_name}]\nLocation: ${slot.location} | Score: ${slot.score} | Moves: ${slot.moves}\n`],
+      transcript: [`[Restored save slot: ${slot.slot_name}]\nLocation: ${slot.location} | Score: ${slot.score} | Moves: ${slot.moves}`],
       lastLocation: slot.location,
       lastScore: slot.score,
       lastMoves: slot.moves,
@@ -366,20 +373,20 @@ export class ZorkGameManager {
     const snapshot = engine.getSnapshot();
     await zorkDb.saveSession(
       userId,
-      gameId,
+      actualGameId,
       snapshot,
       slot.location,
       slot.score,
       slot.moves,
       session.transcript
     );
-    await zorkDb.setLastActiveGame(userId, gameId);
+    await zorkDb.setLastActiveGame(userId, actualGameId);
 
-    const message = `[Restored save slot: "${slot.slot_name}"]\nLocation: ${slot.location} | Score: ${slot.score} | Moves: ${slot.moves}\n\nType 'look' or your next command.\n`;
+    const message = `[Restored save slot: "${slot.slot_name}"]\nLocation: ${slot.location} | Score: ${slot.score} | Moves: ${slot.moves}\n\nType 'look' or your next command.`;
     return {
       success: true,
       outputText: message,
-      gameId,
+      gameId: actualGameId,
       location: slot.location,
       score: slot.score,
       moves: slot.moves
@@ -409,42 +416,22 @@ export class ZorkGameManager {
 
   public async getActiveSession(userId: string, gameId: string) {
     const key = this.getSessionKey(userId, gameId);
-    const inMemorySession = this.activeSessions.get(key);
-    const gameMeta = GAME_CATALOG[gameId] || GAME_CATALOG.zork1;
+    let session = this.activeSessions.get(key);
 
-    if (inMemorySession) {
-      return {
-        hasActiveSession: true,
-        session: {
-          gameId,
-          gameTitle: gameMeta.title,
-          location: inMemorySession.lastLocation,
-          score: inMemorySession.lastScore,
-          moves: inMemorySession.lastMoves,
-          transcript: inMemorySession.transcript,
-          isGameOver: inMemorySession.isGameOver,
-          statusType: inMemorySession.engine.statusType ? 'time' : 'score'
-        }
-      };
-    }
-
-    const dbSession = await zorkDb.getSession(userId, gameId);
-    if (dbSession && dbSession.is_active === 1) {
-      let transcript: string[] = [];
-      try {
-        transcript = JSON.parse(dbSession.transcript || '[]');
-      } catch {
-        transcript = [];
+    if (!session) {
+      const dbSession = await zorkDb.getSession(userId, gameId);
+      if (!dbSession) {
+        return { hasActiveSession: false };
       }
       return {
         hasActiveSession: true,
         session: {
-          gameId,
-          gameTitle: gameMeta.title,
+          gameId: dbSession.game_id,
+          gameTitle: GAME_CATALOG[dbSession.game_id]?.title || dbSession.game_id,
           location: dbSession.location,
           score: dbSession.score,
           moves: dbSession.moves,
-          transcript,
+          transcript: JSON.parse(dbSession.transcript || '[]'),
           isGameOver: false,
           statusType: 'score'
         }
@@ -452,8 +439,17 @@ export class ZorkGameManager {
     }
 
     return {
-      hasActiveSession: false,
-      session: undefined
+      hasActiveSession: true,
+      session: {
+        gameId: session.gameId,
+        gameTitle: GAME_CATALOG[session.gameId]?.title || session.gameId,
+        location: session.lastLocation,
+        score: session.lastScore,
+        moves: session.lastMoves,
+        transcript: session.transcript,
+        isGameOver: session.isGameOver,
+        statusType: 'score'
+      }
     };
   }
 

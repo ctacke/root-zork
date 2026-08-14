@@ -256,7 +256,7 @@ export class ZMachineEngine {
   public deserialize(ar: Uint8Array): { ds: number[]; cs: CallFrame[]; pc: number } | null {
     try {
       const purbot = (this.memInit[14] << (this.byteSwapped ? 0 : 8)) | (this.memInit[15] << (this.byteSwapped ? 8 : 0));
-      if (ar.length < purbot + 12) return null;
+      if (!ar || ar.byteLength < purbot) return null;
       if (ar[2] !== this.memInit[2] || ar[3] !== this.memInit[3]) return null;
 
       // Restore dynamic memory from saved buffer
@@ -267,33 +267,55 @@ export class ZMachineEngine {
       const vi = new DataView(ar.buffer, ar.byteOffset, ar.byteLength);
       let offset = purbot;
 
-      const pc = vi.getUint32(offset); offset += 4;
-      this.seed = vi.getUint32(offset); offset += 4;
+      const hasBytes = (count: number) => offset + count <= vi.byteLength;
 
-      const dsLen = vi.getUint16(offset); offset += 2;
-      const ds: number[] = [];
-      for (let i = 0; i < dsLen; i++) {
-        ds.push(vi.getInt16(offset));
-        offset += 2;
+      let pc = this.getu(6);
+      if (hasBytes(4)) {
+        pc = vi.getUint32(offset);
+        offset += 4;
       }
 
-      const csLen = vi.getUint16(offset); offset += 2;
+      if (hasBytes(4)) {
+        this.seed = vi.getUint32(offset);
+        offset += 4;
+      }
+
+      const ds: number[] = [];
+      if (hasBytes(2)) {
+        const dsLen = vi.getUint16(offset);
+        offset += 2;
+        for (let i = 0; i < dsLen && hasBytes(2); i++) {
+          ds.push(vi.getInt16(offset));
+          offset += 2;
+        }
+      }
+
       const cs: CallFrame[] = [];
-      for (let i = 0; i < csLen; i++) {
-        const framePc = vi.getUint32(offset); offset += 4;
-        const localLen = vi.getUint8(offset); offset += 1;
-        const local = new Int16Array(localLen);
-        for (let j = 0; j < localLen; j++) {
-          local[j] = vi.getInt16(offset);
-          offset += 2;
+      if (hasBytes(2)) {
+        const csLen = vi.getUint16(offset);
+        offset += 2;
+        for (let i = 0; i < csLen && hasBytes(5); i++) {
+          const framePc = vi.getUint32(offset);
+          offset += 4;
+          const localLen = vi.getUint8(offset);
+          offset += 1;
+          const local = new Int16Array(localLen);
+          for (let j = 0; j < localLen && hasBytes(2); j++) {
+            local[j] = vi.getInt16(offset);
+            offset += 2;
+          }
+          let frameDsLen = 0;
+          if (hasBytes(2)) {
+            frameDsLen = vi.getUint16(offset);
+            offset += 2;
+          }
+          const frameDs: number[] = [];
+          for (let j = 0; j < frameDsLen && hasBytes(2); j++) {
+            frameDs.push(vi.getInt16(offset));
+            offset += 2;
+          }
+          cs.push({ pc: framePc, local, ds: frameDs });
         }
-        const frameDsLen = vi.getUint16(offset); offset += 2;
-        const frameDs: number[] = [];
-        for (let j = 0; j < frameDsLen; j++) {
-          frameDs.push(vi.getInt16(offset));
-          offset += 2;
-        }
-        cs.push({ pc: framePc, local, ds: frameDs });
       }
 
       return { ds, cs, pc };
