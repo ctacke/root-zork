@@ -36,9 +36,9 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
         T H E &nbsp; T R I L O G Y &nbsp; C O N S O L E
       </div>
 
-      <p style={{ color: "var(--phosphor-dim)", fontFamily: "var(--mono-code-font)", fontSize: "15px" }}>
-        Welcome, {userNickname || "Adventurer"}. Select a tale to enter the Great Underground Empire:
-      </p>
+      <div className="menu-welcome-text">
+        Welcome, <span className="welcome-name">{userNickname || "Adventurer"}</span>. Select a tale to enter the Underground Empire:
+      </div>
 
       {/* Game Cards List */}
       <div className="game-cards-grid">
@@ -66,8 +66,8 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
                   <span>👣 Moves: <strong>{game.lastMoves}</strong></span>
                 </div>
               ) : (
-                <div className="game-card-status" style={{ color: "var(--phosphor-dim)" }}>
-                  <span>✨ No active save - Ready for a fresh quest</span>
+                <div className="game-card-status dim">
+                  <span>✨ Ready for a new quest</span>
                 </div>
               )}
 
@@ -79,7 +79,7 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
                       onClick={() => onSelectGame(game.id, false)}
                       disabled={isExecuting}
                     >
-                      ▶ RESUME QUEST
+                      ▶ RESUME
                     </button>
                     <button
                       className="retro-btn danger"
@@ -90,7 +90,7 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
                       }}
                       disabled={isExecuting}
                     >
-                      ↺ START OVER
+                      ↺ RESTART
                     </button>
                   </>
                 ) : (
@@ -99,7 +99,7 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
                     onClick={() => onSelectGame(game.id, true)}
                     disabled={isExecuting}
                   >
-                    ▶ START NEW GAME
+                    ▶ START GAME
                   </button>
                 )}
 
@@ -107,7 +107,7 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
                   className="retro-btn"
                   onClick={() => onOpenSaveSlots(game.id)}
                 >
-                  💾 SAVED SLOTS
+                  💾 SAVES
                 </button>
               </div>
             </div>
@@ -115,8 +115,8 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
         })}
       </div>
 
-      {/* Bottom Menu Hotkeys info */}
-      <div style={{ marginTop: "12px", display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
+      {/* Bottom Menu info */}
+      <div className="menu-footer-actions">
         <button className="retro-btn" onClick={onOpenHelp}>
           ❓ ADVENTURER'S GUIDE
         </button>

@@ -6,16 +6,15 @@
 
 :root {
   --crt-bg: #030803;
-  --crt-screen-bg: #060e06;
-  --crt-screen-radial: radial-gradient(circle at center, #0a140a 0%, #030803 95%);
+  --crt-screen-bg: #050e05;
   --phosphor-green: #33ff33;
-  --phosphor-bright: #6eff6e;
-  --phosphor-dim: #1a6e1a;
-  --phosphor-faint: #0c330c;
+  --phosphor-bright: #72ff72;
+  --phosphor-dim: #258325;
+  --phosphor-faint: #0f3d0f;
   --phosphor-amber: #ffb000;
   --phosphor-red: #ff4444;
   --phosphor-glow: 0 0 4px rgba(51, 255, 51, 0.65), 0 0 10px rgba(51, 255, 51, 0.25);
-  --phosphor-glow-bright: 0 0 6px rgba(110, 255, 110, 0.85), 0 0 14px rgba(51, 255, 51, 0.5);
+  --phosphor-glow-bright: 0 0 6px rgba(114, 255, 114, 0.85), 0 0 14px rgba(51, 255, 51, 0.5);
   --border-green: #226f22;
   --border-green-bright: #33ff33;
   --terminal-font: 'VT323', 'Share Tech Mono', 'Courier New', monospace;
@@ -28,35 +27,49 @@
   padding: 0;
 }
 
-html, body, #root {
+html, body {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background-color: var(--crt-bg);
   color: var(--phosphor-green);
   font-family: var(--terminal-font);
-  font-size: 20px;
+  font-size: 19px;
   line-height: 1.25;
   letter-spacing: 0.5px;
   user-select: text;
 }
 
-/* Base Terminal Container - Fits 100% within the window with even border margin */
-.zork-app-wrapper {
-  position: relative;
+#root {
+  flex: 1;
+  min-height: 0;
   width: 100%;
   height: 100%;
-  max-height: 100%;
-  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Base Terminal Container */
+.zork-app-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  padding: 8px 12px 12px 12px;
   display: flex;
   flex-direction: column;
   background: var(--crt-bg);
   overflow: hidden;
+  box-sizing: border-box;
 }
 
-/* CRT Monitor Frame */
+/* CRT Monitor Frame with Bezel */
 .crt-monitor {
   position: relative;
   flex: 1;
@@ -65,11 +78,11 @@ html, body, #root {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--crt-screen-radial);
+  background: var(--crt-screen-bg);
   border: 2px solid var(--border-green);
   border-radius: 8px;
-  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.85),
-              0 0 12px rgba(25, 75, 25, 0.35);
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.4),
+              0 0 10px rgba(25, 75, 25, 0.3);
   overflow: hidden;
 }
 
@@ -82,25 +95,25 @@ html, body, #root {
   bottom: 0;
   background: linear-gradient(
     rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.28) 50%
+    rgba(0, 0, 0, 0.22) 50%
   );
   background-size: 100% 3px;
   pointer-events: none;
-  z-index: 100;
-  opacity: 0.8;
+  z-index: 50;
+  opacity: 0.75;
   border-radius: 6px;
 }
 
-/* Subtle CRT Screen Vignette */
+/* Subtle CRT Screen Vignette (Edge curvature hint only) */
 .crt-vignette {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at center, transparent 75%, rgba(0, 0, 0, 0.65) 100%);
+  background: radial-gradient(circle at center, transparent 88%, rgba(0, 0, 0, 0.3) 100%);
   pointer-events: none;
-  z-index: 99;
+  z-index: 49;
   border-radius: 6px;
 }
 
@@ -120,13 +133,13 @@ html, body, #root {
   letter-spacing: 0.5px;
   text-transform: uppercase;
   border-bottom: 2px solid #030803;
-  z-index: 10;
+  z-index: 60;
   user-select: none;
 }
 
 .status-left {
   display: flex;
-  gap: 18px;
+  gap: 16px;
   align-items: center;
 }
 
@@ -145,16 +158,16 @@ html, body, #root {
 
 .status-right {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
 .status-badge {
   background: #030803;
   color: var(--phosphor-green);
-  padding: 1px 7px;
+  padding: 1px 6px;
   border-radius: 2px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
 }
 
@@ -185,7 +198,8 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 10px 14px 8px 14px;
+  padding: 8px 14px 8px 14px;
+  z-index: 55;
 }
 
 /* Scrolling Monospace Text Area */
@@ -196,7 +210,7 @@ html, body, #root {
   padding-right: 6px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   scroll-behavior: smooth;
 }
 
@@ -224,7 +238,7 @@ html, body, #root {
   color: var(--phosphor-green);
   text-shadow: var(--phosphor-glow);
   font-family: var(--terminal-font);
-  font-size: 21px;
+  font-size: 20px;
   line-height: 1.25;
 }
 
@@ -238,24 +252,25 @@ html, body, #root {
   color: var(--phosphor-amber);
   border-left: 2px solid var(--phosphor-amber);
   padding-left: 6px;
-  font-size: 19px;
+  font-size: 18px;
 }
 
-/* Interactive Input Prompt Bar */
+/* Interactive Input Prompt Bar - High Contrast & Crisp */
 .terminal-input-bar {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  padding-top: 6px;
-  padding-bottom: 2px;
-  border-top: 1px solid var(--phosphor-faint);
+  padding: 6px 6px 4px 6px;
+  border-top: 1px solid rgba(51, 255, 51, 0.35);
   margin-top: 4px;
   font-family: var(--terminal-font);
-  font-size: 23px;
+  font-size: 22px;
+  background: rgba(8, 22, 8, 0.45);
+  border-radius: 2px;
 }
 
 .input-prompt-symbol {
-  color: var(--phosphor-green);
+  color: var(--phosphor-bright);
   text-shadow: var(--phosphor-glow-bright);
   margin-right: 8px;
   font-weight: bold;
@@ -269,25 +284,25 @@ html, body, #root {
   outline: none;
   color: var(--phosphor-bright);
   font-family: var(--terminal-font);
-  font-size: 23px;
+  font-size: 22px;
   letter-spacing: 0.5px;
   text-shadow: var(--phosphor-glow-bright);
-  caret-color: var(--phosphor-green);
+  caret-color: var(--phosphor-bright);
 }
 
 .terminal-input-field::placeholder {
   color: var(--phosphor-dim);
   font-style: italic;
-  font-size: 17px;
+  font-size: 16px;
 }
 
 /* Blinking Cursor Block */
 .cursor-block {
   display: inline-block;
   width: 9px;
-  height: 19px;
-  background-color: var(--phosphor-green);
-  box-shadow: var(--phosphor-glow);
+  height: 18px;
+  background-color: var(--phosphor-bright);
+  box-shadow: var(--phosphor-glow-bright);
   animation: blink 1s step-end infinite;
   vertical-align: middle;
   margin-left: 2px;
@@ -302,62 +317,78 @@ html, body, #root {
    GAME SELECT STARTUP MENU VIEW
    ========================================================= */
 .menu-view-container {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px;
-  gap: 14px;
+  padding: 10px 14px 12px 14px;
+  gap: 8px;
+  z-index: 55;
 }
 
 .ascii-banner {
   color: var(--phosphor-bright);
   text-shadow: var(--phosphor-glow-bright);
   font-family: monospace;
-  font-size: 11px;
-  line-height: 1.1;
+  font-size: 10px;
+  line-height: 1.05;
   text-align: center;
   white-space: pre;
   user-select: none;
+  margin-bottom: 2px;
 }
 
 .menu-subtitle {
   color: var(--phosphor-green);
-  font-size: 18px;
+  font-size: 16px;
   letter-spacing: 3px;
   text-transform: uppercase;
   text-align: center;
   border-top: 1px solid var(--border-green);
   border-bottom: 1px solid var(--border-green);
-  padding: 3px 18px;
+  padding: 2px 14px;
+  margin-bottom: 2px;
+}
+
+.menu-welcome-text {
+  color: var(--phosphor-dim);
+  font-family: var(--mono-code-font);
+  font-size: 14px;
+  text-align: center;
+}
+
+.welcome-name {
+  color: var(--phosphor-bright);
+  font-weight: bold;
 }
 
 .game-cards-grid {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  max-width: 780px;
+  max-width: 740px;
 }
 
 .game-card {
   background: rgba(8, 20, 8, 0.6);
   border: 1px solid var(--border-green);
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s ease;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .game-card:hover, .game-card.selected {
   background: rgba(16, 45, 16, 0.7);
   border-color: var(--phosphor-bright);
-  box-shadow: 0 0 12px rgba(51, 255, 51, 0.25);
+  box-shadow: 0 0 10px rgba(51, 255, 51, 0.25);
 }
 
 .game-card-header {
@@ -367,7 +398,7 @@ html, body, #root {
 }
 
 .game-card-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: bold;
   color: var(--phosphor-bright);
   text-shadow: var(--phosphor-glow);
@@ -376,44 +407,48 @@ html, body, #root {
 .game-card-key {
   background: var(--phosphor-green);
   color: #000;
-  padding: 1px 7px;
+  padding: 1px 6px;
   font-family: var(--mono-code-font);
   font-weight: bold;
-  font-size: 13px;
+  font-size: 12px;
   border-radius: 2px;
 }
 
 .game-card-desc {
-  font-size: 17px;
+  font-size: 16px;
   color: var(--phosphor-green);
   opacity: 0.9;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .game-card-status {
   font-family: var(--mono-code-font);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--phosphor-amber);
   display: flex;
-  gap: 12px;
+  gap: 10px;
   margin-top: 2px;
-  padding-top: 4px;
+  padding-top: 3px;
   border-top: 1px dashed var(--phosphor-faint);
+}
+
+.game-card-status.dim {
+  color: var(--phosphor-dim);
 }
 
 .game-card-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 6px;
+  margin-top: 3px;
 }
 
 .retro-btn {
   background: transparent;
   color: var(--phosphor-green);
   border: 1px solid var(--border-green);
-  padding: 3px 10px;
+  padding: 2px 8px;
   font-family: var(--mono-code-font);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   border-radius: 2px;
   transition: all 0.15s ease;
@@ -432,6 +467,14 @@ html, body, #root {
   background: var(--phosphor-red);
   color: #ffffff;
   border-color: var(--phosphor-red);
+}
+
+.menu-footer-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
 }
 
 /* =========================================================
@@ -491,7 +534,7 @@ html, body, #root {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .save-input-group {

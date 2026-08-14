@@ -96,7 +96,6 @@ export const Console: React.FC<ConsoleProps> = ({
         {isExecuting && (
           <div className="output-chunk system-msg">
             <span>[Processing command...]</span>
-            <span className="cursor-block" />
           </div>
         )}
       </div>
@@ -118,7 +117,6 @@ export const Console: React.FC<ConsoleProps> = ({
           autoCapitalize="off"
           spellCheck="false"
         />
-        {!isExecuting && <span className="cursor-block" />}
       </form>
     </div>
   );

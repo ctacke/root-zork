@@ -34,22 +34,32 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   return (
     <div className="terminal-status-bar">
       <div className="status-left">
-        <div className="status-item">
-          <span className="status-label">LOCATION:</span>
-          <span className="status-value">{location || "WEST OF HOUSE"}</span>
-        </div>
-        <div className="status-item">
-          <span className="status-label">{isTime ? "TIME:" : "SCORE:"}</span>
-          <span className="status-value">{score}</span>
-        </div>
-        <div className="status-item">
-          <span className="status-label">{isTime ? "MINUTES:" : "MOVES:"}</span>
-          <span className="status-value">{moves}</span>
-        </div>
+        {isGameView ? (
+          <>
+            <div className="status-item">
+              <span className="status-label">LOCATION:</span>
+              <span className="status-value">{location || "WEST OF HOUSE"}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">{isTime ? "TIME:" : "SCORE:"}</span>
+              <span className="status-value">{score}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">{isTime ? "MINUTES:" : "MOVES:"}</span>
+              <span className="status-value">{moves}</span>
+            </div>
+          </>
+        ) : (
+          <div className="status-item">
+            <span className="status-value">⚔ ZORK TRILOGY CONSOLE</span>
+          </div>
+        )}
       </div>
 
       <div className="status-right">
-        <span className="status-badge">{gameTitle || "ZORK I"}</span>
+        {isGameView && (
+          <span className="status-badge">{gameTitle || "ZORK I"}</span>
+        )}
         
         {isGameView && (
           <button
