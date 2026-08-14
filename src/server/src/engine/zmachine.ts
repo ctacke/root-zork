@@ -751,8 +751,8 @@ export class ZMachineEngine {
         case 188: // USL
           yield* this.updateStatusLine(
             this.getText(this.getu(objects + xfetch(16) * 9 + 7) + 1),
-            xfetch(18),
-            xfetch(17)
+            xfetch(17),
+            xfetch(18)
           );
           break;
         case 189: // VERIFY
@@ -787,8 +787,8 @@ export class ZMachineEngine {
           yield* this.genPrint('');
           yield* this.updateStatusLine(
             this.getText(this.getu(objects + xfetch(16) * 9 + 7) + 1),
-            xfetch(18),
-            xfetch(17)
+            xfetch(17),
+            xfetch(18)
           );
           this.activePc = instPc;
           this.activeCs = cs;
