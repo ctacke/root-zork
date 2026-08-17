@@ -313,10 +313,14 @@ export const App: React.FC = () => {
 
   return (
     <div className="zork-app-wrapper">
-      <div className="crt-monitor">
+      <div className={`crt-monitor ${scanlinesEnabled ? "crt-mode-on" : "crt-mode-off"}`}>
         {/* CRT Scanline & Curvature Overlays */}
-        {scanlinesEnabled && <div className="crt-scanlines" />}
-        <div className="crt-vignette" />
+        {scanlinesEnabled && (
+          <>
+            <div className="crt-scanlines" />
+            <div className="crt-vignette" />
+          </>
+        )}
 
         {/* Top Status Header */}
         <StatusBar
@@ -352,7 +356,6 @@ export const App: React.FC = () => {
               setIsSaveModalOpen(true);
             }}
             onOpenLeaderboard={targetGameId => handleOpenLeaderboard(targetGameId)}
-            onOpenHelp={() => setIsHelpModalOpen(true)}
             isExecuting={isExecuting}
             userNickname={userNickname}
           />

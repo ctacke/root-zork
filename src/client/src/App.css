@@ -101,9 +101,10 @@ html, body {
   box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.4),
               0 0 10px rgba(25, 75, 25, 0.3);
   overflow: hidden;
+  transition: all 0.2s ease;
 }
 
-/* CRT Scanline Overlay */
+/* CRT Scanline Overlay (Layered above content at z-index 100) */
 .crt-scanlines {
   position: absolute;
   top: 0;
@@ -112,26 +113,75 @@ html, body {
   bottom: 0;
   background: linear-gradient(
     rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.22) 50%
+    rgba(0, 0, 0, 0.42) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.04),
+    rgba(0, 255, 0, 0.02),
+    rgba(0, 0, 255, 0.04)
   );
-  background-size: 100% 3px;
+  background-size: 100% 4px, 6px 100%;
   pointer-events: none;
-  z-index: 50;
-  opacity: 0.75;
+  z-index: 100;
+  opacity: 0.92;
   border-radius: 6px;
 }
 
-/* Subtle CRT Screen Vignette */
+/* CRT Screen Vignette */
 .crt-vignette {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at center, transparent 88%, rgba(0, 0, 0, 0.3) 100%);
+  background: radial-gradient(circle at center, transparent 65%, rgba(0, 0, 0, 0.6) 100%);
   pointer-events: none;
-  z-index: 49;
+  z-index: 99;
   border-radius: 6px;
+}
+
+/* CRT Mode ON: Phosphor Bloom & Glow */
+.crt-mode-on .output-chunk {
+  text-shadow: 0 0 5px rgba(51, 255, 51, 0.75), 0 0 10px rgba(51, 255, 51, 0.35);
+}
+
+.crt-mode-on .output-chunk.command-echo {
+  text-shadow: 0 0 6px rgba(114, 255, 114, 0.9), 0 0 14px rgba(51, 255, 51, 0.5);
+}
+
+.crt-mode-on .terminal-input-field {
+  text-shadow: 0 0 6px rgba(114, 255, 114, 0.85);
+}
+
+.crt-mode-on .ascii-banner {
+  text-shadow: 0 0 8px rgba(114, 255, 114, 0.85);
+}
+
+/* CRT Mode OFF: Flat Crisp Sharp Monospace with No Blur/Glow */
+.crt-mode-off .output-chunk {
+  text-shadow: none;
+}
+
+.crt-mode-off .output-chunk.command-echo {
+  text-shadow: none;
+  color: #8aff8a;
+}
+
+.crt-mode-off .terminal-input-field {
+  text-shadow: none;
+}
+
+.crt-mode-off .ascii-banner {
+  text-shadow: none;
+}
+
+.crt-mode-off .game-card:hover, .crt-mode-off .game-card.selected {
+  box-shadow: none;
+}
+
+.crt-mode-off {
+  box-shadow: none;
+  background: #020502;
 }
 
 /* Classic Infocom Top Status Line (Reverse Video Green) */

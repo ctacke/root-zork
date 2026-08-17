@@ -8,7 +8,6 @@ interface GameSelectMenuProps {
   onSelectGame: (gameId: string, restart: boolean) => void;
   onOpenSaveSlots: (gameId?: string) => void;
   onOpenLeaderboard: (gameId?: string) => void;
-  onOpenHelp: () => void;
   isExecuting: boolean;
   userNickname: string;
 }
@@ -19,7 +18,6 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
   onSelectGame,
   onOpenSaveSlots,
   onOpenLeaderboard,
-  onOpenHelp,
   isExecuting,
   userNickname
 }) => {
@@ -122,19 +120,6 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
               </div>
             );
           })}
-        </div>
-
-        {/* Bottom Menu info */}
-        <div className="menu-footer-actions">
-          <button className="retro-btn" onClick={() => onOpenLeaderboard()}>
-            🏆 TOP 20 LEADERBOARD
-          </button>
-          <button className="retro-btn" onClick={() => onOpenSaveSlots()}>
-            📁 ALL SAVE SLOTS
-          </button>
-          <button className="retro-btn" onClick={onOpenHelp}>
-            ❓ ADVENTURER'S GUIDE
-          </button>
         </div>
       </div>
 
