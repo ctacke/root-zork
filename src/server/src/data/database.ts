@@ -277,8 +277,15 @@ export class ZorkDatabase {
             else resolve();
           });
         } else {
-          // Better score or same score with fewer moves
-          const isBetter = score > row.score || (score === row.score && moves < row.moves);
+          // Update conditions:
+          // 1. Player increased their score (score > row.score)
+          // 2. Player is advancing turns with score 0 (row.score === 0 && score === 0 && moves >= row.moves)
+          // 3. Player achieved the same positive score with fewer moves (efficiency run)
+          const isBetter =
+            score > row.score ||
+            (row.score === 0 && score === 0 && (moves >= row.moves || row.moves === 0)) ||
+            (score > 0 && score === row.score && moves < row.moves);
+
           if (isBetter) {
             const updateSql = `
               UPDATE leaderboard_entries
@@ -301,11 +308,13 @@ export class ZorkDatabase {
 
   public async getLeaderboard(gameId: string, limit: number = 20): Promise<DbLeaderboardEntry[]> {
     return new Promise((resolve, reject) => {
+      // For score > 0: fewer moves is ranked higher (moves ASC)
+      // For score = 0: more exploration is ranked higher (moves DESC)
       const sql = `
         SELECT user_id, game_id, username, score, moves, location, updated_at
         FROM leaderboard_entries
         WHERE game_id = ?
-        ORDER BY score DESC, moves ASC, updated_at ASC
+        ORDER BY score DESC, CASE WHEN score > 0 THEN moves ELSE -moves END ASC, updated_at ASC
         LIMIT ?
       `;
       this.getDb().all(sql, [gameId, limit], (err, rows: DbLeaderboardEntry[] | undefined) => {
