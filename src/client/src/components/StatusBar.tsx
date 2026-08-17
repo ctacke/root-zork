@@ -38,21 +38,23 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       <div className="status-left">
         {isGameView ? (
           <>
-            <div className="status-item">
-              <span className="status-label">LOCATION:</span>
+            <div className="status-item location-item">
+              <span className="status-label">LOC:</span>
               <span className="status-value">{location || "WEST OF HOUSE"}</span>
             </div>
-            <div className="status-item">
-              <span className="status-label">{isTime ? "TIME:" : "SCORE:"}</span>
-              <span className="status-value">{score}</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">{isTime ? "MINUTES:" : "MOVES:"}</span>
-              <span className="status-value">{moves}</span>
+            <div className="status-stats-group">
+              <div className="status-item">
+                <span className="status-label">{isTime ? "TIME:" : "SCORE:"}</span>
+                <span className="status-value">{score}</span>
+              </div>
+              <div className="status-item">
+                <span className="status-label">{isTime ? "MIN:" : "MOVES:"}</span>
+                <span className="status-value">{moves}</span>
+              </div>
             </div>
           </>
         ) : (
-          <div className="status-item">
+          <div className="status-item brand-item">
             <span className="status-value">⚔ ZORK TRILOGY CONSOLE</span>
           </div>
         )}
@@ -65,6 +67,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         
         {isGameView && (
           <button
+            type="button"
             className="status-action-btn"
             onClick={onOpenMenu}
             title="Return to Game Selection Menu"
@@ -74,6 +77,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         )}
         
         <button
+          type="button"
           className="status-action-btn"
           onClick={onOpenLeaderboard}
           title="Top 20 Leaderboard"
@@ -82,23 +86,26 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         </button>
 
         <button
+          type="button"
           className="status-action-btn"
           onClick={onOpenSaveModal}
           title="Save or Restore Game Slots"
         >
-          SAVES
+          💾 SAVES
         </button>
 
         <button
+          type="button"
           className="status-action-btn"
           onClick={onOpenHelpModal}
           title="Adventurer's Guide"
         >
-          GUIDE
+          ❓ GUIDE
         </button>
 
         {isGameView && (
           <button
+            type="button"
             className="status-action-btn"
             onClick={onClearTerminal}
             title="Clear Terminal Output"
@@ -108,7 +115,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         )}
 
         <button
-          className="status-action-btn"
+          type="button"
+          className="status-action-btn crt-toggle-btn"
           onClick={onToggleScanlines}
           title="Toggle CRT Scanline Effect"
         >

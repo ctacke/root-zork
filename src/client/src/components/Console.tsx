@@ -13,6 +13,18 @@ interface ConsoleProps {
   disabled?: boolean;
 }
 
+const QUICK_COMMANDS = [
+  { label: "N", cmd: "n" },
+  { label: "S", cmd: "s" },
+  { label: "E", cmd: "e" },
+  { label: "W", cmd: "w" },
+  { label: "UP", cmd: "up" },
+  { label: "DOWN", cmd: "down" },
+  { label: "LOOK", cmd: "look" },
+  { label: "INV", cmd: "inventory" },
+  { label: "WAIT", cmd: "wait" }
+];
+
 export const Console: React.FC<ConsoleProps> = ({
   logs,
   isExecuting,
@@ -22,6 +34,7 @@ export const Console: React.FC<ConsoleProps> = ({
   const [inputValue, setInputValue] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState<number>(-1);
+  const [showQuickKeys, setShowQuickKeys] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -51,6 +64,13 @@ export const Console: React.FC<ConsoleProps> = ({
     setInputValue("");
 
     onSendCommand(trimmed);
+  };
+
+  const handleQuickCommand = (cmd: string) => {
+    if (isExecuting || disabled) return;
+    setHistory(prev => [...prev, cmd]);
+    setHistoryIdx(-1);
+    onSendCommand(cmd);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -100,8 +120,48 @@ export const Console: React.FC<ConsoleProps> = ({
         )}
       </div>
 
+      {/* Mobile-Friendly Quick Command Toolbar */}
+      {showQuickKeys && (
+        <div className="console-quick-toolbar" onClick={e => e.stopPropagation()}>
+          <div className="quick-keys-list">
+            {QUICK_COMMANDS.map(qc => (
+              <button
+                key={qc.cmd}
+                type="button"
+                className="quick-key-btn"
+                onClick={() => handleQuickCommand(qc.cmd)}
+                disabled={disabled || isExecuting}
+              >
+                {qc.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="quick-key-toggle-btn"
+            onClick={() => setShowQuickKeys(false)}
+            title="Hide Quick Action Bar"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Input Prompt Bar */}
       <form className="terminal-input-bar" onSubmit={handleSubmit}>
+        {!showQuickKeys && (
+          <button
+            type="button"
+            className="quick-keys-reopen-btn"
+            onClick={e => {
+              e.stopPropagation();
+              setShowQuickKeys(true);
+            }}
+            title="Show Quick Direction / Action Buttons"
+          >
+            ⌨
+          </button>
+        )}
         <span className="input-prompt-symbol">&gt;</span>
         <input
           ref={inputRef}
@@ -111,12 +171,19 @@ export const Console: React.FC<ConsoleProps> = ({
           onChange={e => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled || isExecuting}
-          placeholder={disabled ? "" : "Type a command (e.g. 'open mailbox', 'look', 'n', 'save')..."}
+          placeholder={disabled ? "" : "Enter command ('look', 'take lamp', 'n', 'save')..."}
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck="false"
         />
+        <button
+          type="submit"
+          className="terminal-submit-btn"
+          disabled={disabled || isExecuting || !inputValue.trim()}
+        >
+          SEND
+        </button>
       </form>
     </div>
   );

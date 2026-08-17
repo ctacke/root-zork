@@ -26,22 +26,24 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
   return (
     <>
       <div className="menu-view-container">
-        {/* ASCII Retro Header */}
-        <pre className="ascii-banner">
+        {/* Responsive ASCII Retro Header */}
+        <div className="ascii-banner-wrapper">
+          <pre className="ascii-banner">
 {`███████╗ ██████╗ ██████╗ ██╗  ██╗
 ╚══███╔╝██╔═══██╗██╔══██╗██║ ██╔╝
   ███╔╝ ██║   ██║██████╔╝█████╔╝ 
  ███╔╝  ██║   ██║██╔══██╗██╔═██╗ 
 ███████╗╚██████╔╝██║  ██║██║  ██╗
 ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝`}
-        </pre>
+          </pre>
+        </div>
 
         <div className="menu-subtitle">
           T H E &nbsp; T R I L O G Y &nbsp; C O N S O L E
         </div>
 
         <div className="menu-welcome-text">
-          Welcome, <span className="welcome-name">{userNickname || "Adventurer"}</span>. Select a tale to enter the Underground Empire:
+          Welcome, <span className="welcome-name">{userNickname || "Adventurer"}</span>.<br className="mobile-only-break" /> Choose an adventure:
         </div>
 
         {/* Game Cards List */}
@@ -58,16 +60,16 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
               >
                 <div className="game-card-header">
                   <div className="game-card-title">{game.title}</div>
-                  <span className="game-card-key">PRESS [{numKey}]</span>
+                  <span className="game-card-key">[{numKey}]</span>
                 </div>
 
                 <div className="game-card-desc">{game.description}</div>
 
                 {game.hasActiveGame ? (
                   <div className="game-card-status">
-                    <span>📍 Last Location: <strong>{game.lastLocation || "In Progress"}</strong></span>
-                    <span>🏆 Score: <strong>{game.lastScore}</strong></span>
-                    <span>👣 Moves: <strong>{game.lastMoves}</strong></span>
+                    <span className="status-pill">📍 {game.lastLocation || "In Progress"}</span>
+                    <span className="status-pill">🏆 Score: {game.lastScore}</span>
+                    <span className="status-pill">👣 Moves: {game.lastMoves}</span>
                   </div>
                 ) : (
                   <div className="game-card-status dim">
@@ -79,13 +81,15 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
                   {game.hasActiveGame ? (
                     <>
                       <button
-                        className="retro-btn"
+                        type="button"
+                        className="retro-btn primary-action"
                         onClick={() => onSelectGame(game.id, false)}
                         disabled={isExecuting}
                       >
                         ▶ RESUME
                       </button>
                       <button
+                        type="button"
                         className="retro-btn danger"
                         onClick={() => setRestartTarget(game)}
                         disabled={isExecuting}
@@ -95,15 +99,17 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
                     </>
                   ) : (
                     <button
-                      className="retro-btn"
+                      type="button"
+                      className="retro-btn primary-action"
                       onClick={() => onSelectGame(game.id, true)}
                       disabled={isExecuting}
                     >
-                      ▶ START GAME
+                      ▶ START
                     </button>
                   )}
 
                   <button
+                    type="button"
                     className="retro-btn"
                     onClick={() => onOpenSaveSlots(game.id)}
                   >
@@ -111,6 +117,7 @@ export const GameSelectMenu: React.FC<GameSelectMenuProps> = ({
                   </button>
 
                   <button
+                    type="button"
                     className="retro-btn"
                     onClick={() => onOpenLeaderboard(game.id)}
                   >
